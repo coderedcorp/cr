@@ -1,0 +1,112 @@
+# See: https://aka.ms/yaml
+
+trigger:
+  - main
+
+stages:
+  - stage: Quality_Control
+    displayName: Quality Control
+    jobs:
+      - job: qc
+        displayName: Quality Control
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - task: UsePythonVersion@0
+            displayName: "Use Python version"
+            inputs:
+              versionSpec: "3.10"
+              architecture: "x64"
+
+          - script: python -m pip install -r requirements-dev.txt
+            displayName: "CR-QC: Install local package"
+
+          - script: |
+              cr
+              cr --help
+              cr deploy --help
+              cr restart --help
+              cr upload --help
+            displayName: "CR-QC: Run CLI"
+
+          - script: flake8 .
+            displayName: "CR-QC: flake8"
+
+          - script: mypy .
+            displayName: "CR-QC: mypy"
+
+          - script: black --check .
+            displayName: "CR-QC: black"
+
+  - stage: Build_Dist
+    displayName: Build Distributables
+    dependsOn: Quality_Control
+    condition: succeeded('Quality_Control')
+    jobs:
+      - job: windows10
+        displayName: Windows 10
+        pool:
+          vmImage: "windows-2019"
+        steps:
+          - task: UsePythonVersion@0
+            displayName: "Use Python version"
+            inputs:
+              versionSpec: "3.10"
+              architecture: "x64"
+
+          - script: python -m pip install -r requirements-dev.txt
+            displayName: "CR-BLD: Install"
+
+          - script: pyinstaller --clean --dist ./dist/bin/ ./cr.spec
+            displayName: "CR-BLD: Build"
+
+          - publish: $(System.DefaultWorkingDirectory)\dist\bin\
+            artifact: cr_windows
+
+      - job: macos11
+        displayName: macOS 11
+        pool:
+          vmImage: "macOS-11"
+
+        steps:
+          - task: UsePythonVersion@0
+            displayName: "Use Python version"
+            inputs:
+              versionSpec: "3.10"
+              architecture: "x64"
+
+          - script: python -m pip install -r requirements-dev.txt
+            displayName: "CR-BLD: Install"
+
+          - script: pyinstaller --clean --dist ./dist/bin/ ./cr.spec
+            displayName: "CR-BLD: Build"
+
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin/
+            artifact: cr_macos
+
+      - job: ubuntu2004
+        displayName: Ubuntu 20.04
+        pool:
+          vmImage: "ubuntu-20.04"
+
+        steps:
+          - task: UsePythonVersion@0
+            displayName: "Use Python version"
+            inputs:
+              versionSpec: "3.10"
+              architecture: "x64"
+
+          - script: python -m pip install -r requirements-dev.txt
+            displayName: "CR-BLD: Install"
+
+          - script: pyinstaller --clean --dist ./dist/bin/ ./cr.spec
+            displayName: "CR-BLD: Build"
+
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin/
+            artifact: cr_linux
+
+          - script: python -m build --outdir ./dist/pypi/
+            displayName: "CR-BLD: PyPI"
+
+          - publish: $(System.DefaultWorkingDirectory)/dist/pypi/
+            artifact: cr_python

@@ -99,18 +99,29 @@ All functionality must be fully cross-platform between Windows and Posix systems
 Publishing
 ----------
 
+The Azure Pipeline will generate python packages (source dist, wheel) and binaries for Mac (11 or newer), Windows (10 or newer), and Linux (Ubuntu 20.04 or newer). All binaries are for 64-bit systems.
+
 ### On PyPI
 
 The program is set up as a Python package, therefore, a source dist and wheel can be built. When building within a venv, the `--no-isolation` flag is required:
 
 ```console
-$ python -m build --no-isolation
+$ python -m build --no-isolation --outdir ./dist/pypi/
+```
+
+Then upload the contents using twine:
+```console
+$ twine ./dist/pypi/*
 ```
 
 ### Binaries
 
-WIP
+PyInstaller is used to create binaries. PyInstaller must be run on the same platform as the output binaries, i.e. it cannot cross-compile. Additionally, it should be run on the oldest supported version of the platform. For example, running on Windows 10 will generate a build that is compatible with Windows 10 and 11.
 
-PyInstaller and UPX are used to create binaries. To build:
+```console
+$ pyinstaller --clean --dist ./dist/bin/ ./cr.spec
+```
 
-Then upload to GitHub under each release:
+NOTE: macOS binaries will require special security permissions to run since we currently do not have code signing in place.
+
+Upload files from `./dist/bin/` to GitHub under the release.

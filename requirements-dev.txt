@@ -2,6 +2,7 @@
 build
 flake8
 mypy
+pyinstaller==5.4.*
 setuptools>=61
 twine
 types-paramiko
