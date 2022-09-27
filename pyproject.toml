@@ -1,3 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+authors = [
+    {name = "CodeRed LLC", email = "info@coderedcorp.com"}
+]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "paramiko==2.11.*",
+    "rich==12.5.*",
+]
+description = "The official CodeRed Cloud command line tool."
+dynamic = ["version"]
+license = {file = "LICENSE.txt"}
+name = "cr"
+readme = "README.md"
+requires-python = ">=3.7"
+
+[project.scripts]
+cr = "cr.cli:main"
+
+[project.urls]
+url = "https://github.com/coderedcorp/cr"
+
 [tool.black]
 line-length = 80
 include = '\.pyi?$'
@@ -11,3 +40,15 @@ exclude = '''
   | build
 )/
 '''
+
+[too.coverage.run]
+omit = [
+    ".*",
+    "venv/*",
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.setuptools.dynamic]
+version = {attr = "cr.__version__"}

@@ -41,8 +41,8 @@ The `webapp` handle is your website's CodeRed Cloud subdomain. For example: `exa
 Finally, run `cr --help` to see usage, or `cr {command} --help` to see usage about a particular command.
 
 
-Contributing to `cr`
---------------------
+Contributing
+------------
 
 Create a virtual environment:
 
@@ -101,10 +101,10 @@ Publishing
 
 ### On PyPI
 
-The program is set up as a Python package, therefore, a source dist and wheel can be built for any environment as so:
+The program is set up as a Python package, therefore, a source dist and wheel can be built. When building within a venv, the `--no-isolation` flag is required:
 
 ```console
-$ python setup.py sdist bdist_wheel
+$ python -m build --no-isolation
 ```
 
 ### Binaries
