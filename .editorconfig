@@ -1,0 +1,30 @@
+# Editor configuration, see http://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{html,js,json,scss,ts,vue}]
+indent_style = space
+indent_size = 2
+max_line_length = 80
+
+[*.{ps1,py,sh}]
+indent_style = space
+indent_size = 4
+max_line_length = 80
+
+[*.{cfg,conf,in,ini,md,rst,toml,txt}]
+indent_style = space
+indent_size = 4
+
+[*{Dockerfile,.dockerfile}]
+indent_style = space
+indent_size = 4
+max_line_length = 80
+
+[*.go]
+indent_style = tab
+max_line_length = 80

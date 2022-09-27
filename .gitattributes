@@ -1,0 +1,21 @@
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*Dockerfile text eol=lf
+*.cfg text eol=lf
+*.conf text eol=lf
+*.css text eol=lf
+*.dockerfile text eol=lf
+*.html text eol=lf
+*.in text eol=lf
+*.ini text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.ps1 text eol=lf
+*.py text eol=lf
+*.rst text eol=lf
+*.sass text eol=lf
+*.scss text eol=lf
+*.sh text eol=lf
+*.toml text eol=lf
+*.txt text eol=lf
