@@ -12,6 +12,7 @@ import enum
 import json
 
 from rich.console import Console
+import certifi
 
 from cr import __version__, DOCS_LINK, LOGGER, USER_AGENT, UserCancelError
 
@@ -220,7 +221,7 @@ def request_json(
 
     # Open the request and read the response.
     try:
-        r = urlopen(req, timeout=timeout)
+        r = urlopen(req, timeout=timeout, cafile=certifi.where())
         d = _response_to_json(r)
         code = r.code
         LOGGER.info("%s %s %d", method, url, code)
