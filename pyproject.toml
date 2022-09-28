@@ -55,5 +55,8 @@ addopts = "--cov cr --cov-report html"
 [tool.mypy]
 ignore_missing_imports = true
 
+[tool.setuptools]
+packages = ["cr"]
+
 [tool.setuptools.dynamic]
 version = {attr = "cr.__version__"}
