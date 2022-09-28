@@ -18,38 +18,42 @@ List of directory names to always exclude from deployments.
 """
 
 
-def get_command(program: str) -> str:
+def get_command(program: str) -> Path:
     r"""
-    Finds full path to a command on PATH given a command name. E.g. "bash"
-    returns "/bin/bash"; "git" might return "C:\Program Files\Git\bin\git.exe"
+    Finds full path to a command on PATH given a command name.
+    E.g. ``bash`` returns ``/bin/bash``;
+    ``git`` might return ``C:\Program Files\Git\bin\git.exe``
 
     :param str program:
         The program to search for. Must be an exectable, not a shell built-in.
-    :return:
-        Full path to exectuable.
-    :rtype: str
+
+    :raise FileNotFoundError: if the program cannot be found on the PATH.
+
+    :return: Full path to exectuable.
+    :rtype: Path
     """
     # If program is already a perfect path, simply return it.
-    if os.path.exists(program):
-        return program
+    if Path(program).exists():
+        return Path(program)
 
     # Get list of executable extensions (Windows).
-    exts = []  # type: List[str]
+    exts: List[str] = []
     if os.environ.get("PATHEXT"):
         exts = os.environ["PATHEXT"].split(";")
 
     # Search paths for program.
     for path in os.get_exec_path():
-        searchpath = os.path.join(path, program)
-        if os.path.exists(searchpath):
-            LOGGER.debug("Found `%s` at `%s`", program, searchpath)
-            return searchpath
+        testpath = Path(path) / program
+        if testpath.exists():
+            LOGGER.debug("Found `%s` at `%s`", program, testpath)
+            return testpath
         for ext in exts:
-            extpath = searchpath + ext
-            if os.path.exists(extpath):
-                LOGGER.debug("Found `%s` at `%s`", program, extpath)
-                return extpath
-    raise KeyError("Could not find `%s` on PATH" % program)
+            testpath = Path(path) / f"{program}{ext}"
+            if testpath.exists():
+                LOGGER.debug("Found `%s` at `%s`", program, testpath)
+                return testpath
+
+    raise FileNotFoundError(f"Could not find `{program}` on PATH")
 
 
 def exec_proc(
@@ -57,28 +61,29 @@ def exec_proc(
     infile: Path = None,
     outfile: Path = None,
     outfile_mode: str = "w",
-    ignore_return_codes: List[int] = [],
+    ok_exit_codes: List[int] = [0],
 ) -> Tuple[int, str, str]:
     """
     Executes a process on the local machine.
 
     :param List[str] args:
-        The arguments, starting with program name, that get passed to Popen. This does not support
-        shell commands, only executable files.
+        The arguments, starting with program name, that get passed to Popen.
+        This does not support shell commands, only executable files.
     :param str infile:
         Path to a file to pipe into stdin as UTF8 text.
     :param str outfile:
         Path to a file in which to save stdout as UTF8 text.
     :param str outfile_mode:
         Mode to use when writing to outfile.
-    :param List[int] ignore_return_codes:
-        The list of return codes will not be treated as errors.
-    :return:
-        Tuple of exit code, stdout, stderr.
+    :param List[int] ok_exit_codes:
+        The list of exit/return codes will not be logged as errors.
+
+    :return: Tuple of exit code, stdout, stderr.
+    :rtype: Tuple[int, str, str]
     """
     if not os.path.isfile(args[0]):
         # Find program on PATH.
-        args[0] = get_command(args[0])
+        args[0] = str(get_command(args[0]))
 
     stdin: Union[IO, None] = None
     stdout: Union[IO, int] = PIPE
@@ -114,15 +119,12 @@ def exec_proc(
             # Run process and capture output.
             com_stdout, com_stderr = proc.communicate()
             # Log stdout to debug.
-            if com_stdout and com_stdout.strip():
+            if com_stdout:
                 LOGGER.debug(com_stdout.strip())
             # Log stderr to error, or debug.
-            if (
-                proc.returncode > 0
-                and proc.returncode not in ignore_return_codes
-            ):
+            if com_stderr and proc.returncode not in ok_exit_codes:
                 LOGGER.error(com_stderr.strip())
-            elif com_stderr and com_stderr.strip():
+            elif com_stderr:
                 LOGGER.debug(com_stderr.strip())
     finally:
         if isinstance(stdin, io.IOBase):
@@ -147,19 +149,32 @@ def git_branch() -> str:
 
 def git_ignored(p: Path = None) -> List[Path]:
     """
-    Returns a list of files and directories ignored by git.
+    Returns a list of absolute file and directory paths ignored by git.
     """
+    lp: List[Path] = []
+
+    # Build the command.
     cmd = ["git", "ls-files", "--others", "--directory"]
     if p:
         cmd.append(str(p))
-    _, out, err = exec_proc(cmd)
+
+    # Run the command.
+    # If git exits with an error, or is not on the path, return an empty list.
+    try:
+        code, out, err = exec_proc(cmd)
+        if code != 0:
+            return lp
+    except FileNotFoundError:
+        return lp
+
     # Split stdout by newline.
     ls = out.strip("\r\n").split("\n")
+
     # Convert each entry to a Path.
-    lp = []
     for s in ls:
         lp.append(Path(s.strip("\r\n")).resolve())
     LOGGER.debug("Git ignored: `%s`.", lp)
+
     return lp
 
 
