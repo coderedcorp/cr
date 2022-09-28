@@ -1,9 +1,11 @@
 -e ./
 black
 build
+coverage
 flake8
 mypy
 pyinstaller==5.4.*
+pytest
 setuptools>=61
 twine
 types-paramiko

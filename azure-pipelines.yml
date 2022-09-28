@@ -7,8 +7,10 @@ stages:
   - stage: Quality_Control
     displayName: Quality Control
     jobs:
-      - job: qc
-        displayName: Quality Control
+
+      # Run the linters once on the latest version of linux.
+      - job: lint
+        displayName: Lint
         pool:
           vmImage: "ubuntu-latest"
         steps:
@@ -38,6 +40,33 @@ stages:
           - script: black --check .
             displayName: "CR-QC: black"
 
+      # Run the unit tests on each platform.
+      - job: test
+        displayName: Tests
+        strategy:
+          matrix:
+            linux:
+              vmImage: "ubuntu-20.04"
+            windows:
+              vmImage: "windows-2019"
+            mac:
+              vmImage: "macOS-11"
+        steps:
+          - task: UsePythonVersion@0
+            displayName: "Use Python version"
+            inputs:
+              versionSpec: "3.10"
+              architecture: "x64"
+
+          # Add the `pytest-azurepipelines` package which magically uploads and
+          # formats testing output.
+          - script: python -m pip install -r requirements-dev.txt pytest-azurepipelines
+            displayName: "CR-QC: Install package for testing"
+
+          - script: pytest
+            displayName: "CR-QC: Tests"
+
+  # Build bundles for each platform.
   - stage: Build_Dist
     displayName: Build Distributables
     dependsOn: Quality_Control

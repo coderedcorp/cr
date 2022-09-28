@@ -42,11 +42,15 @@ exclude = '''
 )/
 '''
 
-[too.coverage.run]
+[tool.coverage.run]
+source = ["cr"]
 omit = [
     ".*",
     "venv/*",
 ]
+
+[tool.pytest.ini_options]
+addopts = "--cov cr --cov-report html"
 
 [tool.mypy]
 ignore_missing_imports = true

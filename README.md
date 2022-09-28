@@ -72,6 +72,12 @@ $ mypy .
 $ black .
 ```
 
+Tests should be written in `tests/test_{name}.py` where name is the source file in `cr/` it is testing.
+
+```console
+$ pytest
+```
+
 Type annotations are used to enforce static typing. Read about [Mypy](http://mypy-lang.org/examples.html) and about [type annotations in Python3](https://www.python.org/dev/peps/pep-3107/).
 
 For example:
