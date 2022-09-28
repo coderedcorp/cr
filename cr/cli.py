@@ -174,7 +174,9 @@ class Command:
         load_config(extra_configs)
 
         # Get token.
-        token = config("token", args.webapp, args.token)
+        token = args.token
+        if not token:
+            token = config("token", args.webapp)
         if not token:
             raise Exception(
                 "An API token is required.\nProvide one with --token, the "
