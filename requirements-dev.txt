@@ -6,6 +6,7 @@ flake8
 mypy
 pyinstaller==5.4.*
 pytest
+pytest-cov
 setuptools>=61
 twine
 types-paramiko
