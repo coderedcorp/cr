@@ -88,7 +88,10 @@ stages:
           - script: pyinstaller --clean --dist ./dist/ ./cr.spec
             displayName: "CR-BLD: Build"
 
-          - publish: $(System.DefaultWorkingDirectory)/dist/cr
+          - script: mv ./dist/cr ./dist/cr-macos
+            displayName: "CR-BLD: Rename"
+
+          - publish: $(System.DefaultWorkingDirectory)/dist/cr-macos
             artifact: cr-macos
 
       - job: ubuntu2004
@@ -112,7 +115,10 @@ stages:
           - script: pyinstaller --clean --dist ./dist/ ./cr.spec
             displayName: "CR-BLD: Build"
 
-          - publish: $(System.DefaultWorkingDirectory)/dist/cr
+          - script: mv ./dist/cr ./dist/cr-linux
+            displayName: "CR-BLD: Rename"
+
+          - publish: $(System.DefaultWorkingDirectory)/dist/cr-linux
             artifact: cr-linux
 
           - script: python -m build --outdir ./dist/pypi/
