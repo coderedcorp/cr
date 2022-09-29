@@ -61,14 +61,11 @@ stages:
           - script: pytest
             displayName: "CR-QC: Test"
 
-          - script: pyinstaller --clean --dist ./tmp/ ./cr.spec
+          - script: pyinstaller --clean --dist ./dist/ ./cr.spec
             displayName: "CR-BLD: Build"
 
-          - pwsh: New-Item -Type Directory -Force ./dist/; Move-Item ./tmp/cr.exe ./dist/
-            displayName: "CR-BLD: Copy"
-
-          - publish: $(System.DefaultWorkingDirectory)\dist\
-            artifact: dist
+          - publish: $(System.DefaultWorkingDirectory)\dist\cr.exe
+            artifact: cr.exe
 
       - job: macos11
         displayName: macOS 11
@@ -88,14 +85,11 @@ stages:
           - script: pytest
             displayName: "CR-QC: Test"
 
-          - script: pyinstaller --clean --dist ./tmp/ ./cr.spec
+          - script: pyinstaller --clean --dist ./dist/ ./cr.spec
             displayName: "CR-BLD: Build"
 
-          - script: mkdir -p ./dist/; mv ./tmp/cr ./dist/cr-macos
-            displayName: "CR-BLD: Copy"
-
-          - publish: $(System.DefaultWorkingDirectory)/dist/
-            artifact: dist
+          - publish: $(System.DefaultWorkingDirectory)/dist/cr
+            artifact: cr-macos
 
       - job: ubuntu2004
         displayName: Ubuntu 20.04
@@ -115,14 +109,14 @@ stages:
           - script: pytest
             displayName: "CR-QC: Test"
 
-          - script: pyinstaller --clean --dist ./tmp/ ./cr.spec
+          - script: pyinstaller --clean --dist ./dist/ ./cr.spec
             displayName: "CR-BLD: Build"
 
-          - script: mkdir -p ./dist/; mv ./tmp/cr ./dist/cr-linux
-            displayName: "CR-BLD: Copy"
+          - publish: $(System.DefaultWorkingDirectory)/dist/cr
+            artifact: cr-linux
 
-          - script: python -m build --outdir ./dist/
+          - script: python -m build --outdir ./dist/pypi/
             displayName: "CR-BLD: PyPI"
 
-          - publish: $(System.DefaultWorkingDirectory)/dist/
-            artifact: dist
+          - publish: $(System.DefaultWorkingDirectory)/dist/pypi/
+            artifact: pypi
