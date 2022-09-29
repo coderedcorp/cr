@@ -6,10 +6,12 @@ Copyright (c) 2022 CodeRed LLC.
 from typing import Generator, Iterable
 import argparse
 
-from rich.console import Console, Group, RenderableType
+from rich.console import Console, Group, RenderableType, WINDOWS
 from rich.highlighter import RegexHighlighter
 from rich.measure import measure_renderables
 from rich.padding import Padding
+from rich.progress import Progress as _Progress
+from rich.progress import TaskID
 from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
@@ -58,6 +60,57 @@ CONSOLE = Console(highlighter=CustomHighlighter(), theme=RICH_THEME)
 CONSOLE_ERR = Console(
     highlighter=CustomHighlighter(), theme=RICH_THEME, stderr=True
 )
+
+
+class Progress(_Progress):
+    """
+    Provides extra support for Windows Terminal and ConEmu to set operating
+    system codes (OSC) for progress indicators.
+    """
+
+    def add_task(self, *args, **kwargs) -> TaskID:
+        """
+        Override to initiate OSC progress indicator.
+        """
+        tid = super().add_task(*args, **kwargs)
+
+        # Only continue on supported systems.
+        if not WINDOWS or self.console.legacy_windows:
+            return tid
+
+        task = self._tasks[tid]
+
+        # Set indeterminite status if no total.
+        if task.total is None:
+            self.console.print("\x1b]9;4;3;0\x1b\\", end="")
+
+        # If we have a total, show the percentage.
+        elif task.total:
+            percent = int(task.percentage)
+            self.console.print(f"\x1b]9;4;1;{percent}\x1b\\", end="")
+
+        return tid
+
+    def update(self, task_id: TaskID, *args, **kwargs) -> None:
+        """
+        Override to reset OSC progress, or update the percentage.
+        """
+        super().update(task_id, *args, **kwargs)
+
+        # Only continue on supported systems.
+        if not WINDOWS or self.console.legacy_windows:
+            return
+
+        task = self._tasks[task_id]
+
+        # Reset if completed.
+        if task.total and task.completed >= task.total:
+            self.console.print("\x1b]9;4;0;0\x1b\\", end="")
+
+        # If we have a total, show the percentage.
+        elif task.total:
+            percent = int(task.percentage)
+            self.console.print(f"\x1b]9;4;1;{percent}\x1b\\", end="")
 
 
 class RichArgparseFormatter(

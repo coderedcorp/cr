@@ -31,7 +31,6 @@ from rich.logging import RichHandler
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
-    Progress,
     TaskProgressColumn,
     TimeElapsedColumn,
     TextColumn,
@@ -39,7 +38,12 @@ from rich.progress import (
 from cr import __version__, DOCS_LINK, LOGGER, UserCancelError
 from cr.api import Env, Webapp
 from cr.config import config, load_config
-from cr.rich_utils import CONSOLE, CONSOLE_ERR, RichArgparseFormatter
+from cr.rich_utils import (
+    CONSOLE,
+    CONSOLE_ERR,
+    Progress,
+    RichArgparseFormatter,
+)
 from cr.ssh import Server
 from cr.utils import git_ignored, paths_to_deploy
 
