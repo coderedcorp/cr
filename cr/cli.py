@@ -43,6 +43,7 @@ from cr.rich_utils import (
     CONSOLE_ERR,
     Progress,
     RichArgparseFormatter,
+    osc_reset,
 )
 from cr.ssh import Server
 from cr.utils import git_ignored, paths_to_deploy
@@ -473,11 +474,13 @@ def main():
     except (KeyboardInterrupt, UserCancelError):
         LOGGER.warning("Fatal: User cancelled the operation.")
         CONSOLE_ERR.print("User cancelled the operation.")
+        osc_reset(CONSOLE)
         # check_update(CONSOLE_ERR)
         sys.exit(2)
     except Exception as err:
         LOGGER.exception("Fatal: %s", err)
         CONSOLE_ERR.print("[red]Error:[/]", err)
+        osc_reset(CONSOLE)
         # check_update(CONSOLE_ERR)
         sys.exit(1)
 

@@ -62,6 +62,35 @@ CONSOLE_ERR = Console(
 )
 
 
+def osc_reset(console):
+    """
+    Provides extra support for Windows Terminal and ConEmu to set operating
+    system codes (OSC) for progress indicators.
+    """
+    if WINDOWS and not console.legacy_windows:
+        console.print("\x1b]9;4;0;0\x1b\\", end="")
+
+
+def osc_indeterminate(console):
+    """
+    Provides extra support for Windows Terminal and ConEmu to set operating
+    system codes (OSC) for progress indicators.
+    """
+    if WINDOWS and not console.legacy_windows:
+        console.print("\x1b]9;4;3;0\x1b\\", end="")
+
+
+def osc_progress(console, percent: int):
+    """
+    Provides extra support for Windows Terminal and ConEmu to set operating
+    system codes (OSC) for progress indicators.
+
+    :param int percent: 0 to 100
+    """
+    if WINDOWS and not console.legacy_windows:
+        console.print(f"\x1b]9;4;1;{percent}\x1b\\", end="")
+
+
 class Progress(_Progress):
     """
     Provides extra support for Windows Terminal and ConEmu to set operating
@@ -82,12 +111,11 @@ class Progress(_Progress):
 
         # Set indeterminite status if no total.
         if task.total is None:
-            self.console.print("\x1b]9;4;3;0\x1b\\", end="")
+            osc_indeterminate(self.console)
 
         # If we have a total, show the percentage.
         elif task.total:
-            percent = int(task.percentage)
-            self.console.print(f"\x1b]9;4;1;{percent}\x1b\\", end="")
+            osc_progress(self.console, int(task.percentage))
 
         return tid
 
@@ -105,12 +133,11 @@ class Progress(_Progress):
 
         # Reset if completed.
         if task.total and task.completed >= task.total:
-            self.console.print("\x1b]9;4;0;0\x1b\\", end="")
+            osc_reset(self.console)
 
         # If we have a total, show the percentage.
         elif task.total:
-            percent = int(task.percentage)
-            self.console.print(f"\x1b]9;4;1;{percent}\x1b\\", end="")
+            osc_progress(self.console, int(task.percentage))
 
 
 class RichArgparseFormatter(
