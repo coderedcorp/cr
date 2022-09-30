@@ -5,10 +5,14 @@ Copyright (c) 2022 CodeRed LLC.
 """
 from pathlib import Path, PurePosixPath
 from typing import List, Optional
+import stat
+import os
 
 from paramiko.client import AutoAddPolicy, SSHClient
 from paramiko.sftp_client import SFTPClient
 from rich.progress import Progress
+
+from cr.utils import EXCLUDE_DIRNAMES
 
 
 class Server:
@@ -63,7 +67,7 @@ class Server:
         r: Path,
         s: PurePosixPath,
         progress: Progress = None,
-    ):
+    ) -> None:
         """
         Recursively SFTP a Path ``r`` to the server path ``s``.
         File and directory structure within ``r`` is mirrored to ``s``.
@@ -101,3 +105,77 @@ class Server:
                 sftp.put(str(p), str(remote_p))
             if progress:
                 progress.update(t, advance=1)
+
+    def get(
+        self,
+        s: PurePosixPath,
+        r: Path,
+        progress: Progress = None,
+    ) -> None:
+        """
+        Recursively download a Path ``s`` from the server to local directory ``r``.
+        File and directory structure within ``s`` is mirrored to ``r``.
+        If ``s`` is a file, download it directly into ``r``.
+        Progress bar ``p`` is updated with a task for each file download.
+        """
+        # Connect.
+        sftp = self.open_sftp()
+
+        # If root is a file, get its parent directory.
+        if r.is_file():
+            r = r.parent
+
+        # Traverse server path and download files.
+        if progress:
+            t = progress.add_task("Scanning", total=None)
+
+        def get_files(sp: PurePosixPath, t, count: int = 0) -> int:
+            """
+            Recursively downloads remote dir ``sp``, and returns number of
+            files download.
+            """
+            items = sftp.listdir_attr(str(sp))
+            for item in items:
+                # Figure out the local path that this remote file should be
+                # downloaded to.
+                fullpath = sp / item.filename
+                relpath = fullpath.relative_to(s)
+                localpath = r / relpath
+
+                # Apparently this can be None, according to mypy.
+                if item.st_mode is None:
+                    raise Exception(f"SFTP stat mode undefined `{fullpath}`.")
+
+                # If it is a directory...
+                if stat.S_ISDIR(item.st_mode):
+                    # Skip over hidden or excluded dirs.
+                    if (
+                        item.filename.startswith(".")
+                        or item.filename in EXCLUDE_DIRNAMES
+                        or item.filename in ["static", "cache", "media"]
+                    ):
+                        continue
+
+                    # Make a local directly to match the server path.
+                    if progress:
+                        progress.print(f"[cr.progress_print]MKDIR {relpath}[/]")
+                    os.makedirs(localpath, exist_ok=True)
+
+                    # Recursively traverse this directory.
+                    count = get_files(fullpath, t, count)
+
+                # Else download the file.
+                else:
+                    if progress:
+                        progress.print(f"[cr.progress_print]GET   {relpath}[/]")
+                    sftp.get(str(fullpath), str(localpath))
+                    count += 1
+                    if progress and t:
+                        progress.update(t, advance=1)
+
+            return count
+
+        # Recursively download the files.
+        num = get_files(s, t)
+        if progress:
+            progress.update(t, total=num)

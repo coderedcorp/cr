@@ -114,7 +114,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
         Override to show a more friendly help message.
         """
         CONSOLE.print(f"{self.prog}: {message}")
-        CONSOLE.print("See `cr --help`.")
+        CONSOLE.print(f"See `{self.prog} --help`.")
         self.exit(2)
 
 
@@ -252,17 +252,21 @@ class Deploy(Command):
                 # Generate a new SFTP password from CodeRed Cloud API.
                 passwd = w.api_get_sftp_password(args.env)
 
-                # Connect to the webapp's server.
-                s.passwd = passwd
-                s.connect()
+                try:
+                    # Connect to the webapp's server.
+                    s.passwd = passwd
+                    s.connect()
 
-                # Initiate SFTP mode.
-                s.open_sftp()
-                pbar.update(t, total=1, completed=1)
+                    # Initiate SFTP mode.
+                    s.open_sftp()
+                    pbar.update(t, total=1, completed=1)
 
-                # Copy files.
-                s.put(files, args.path, PurePosixPath("/www"), progress=pbar)
-                s.close()
+                    # Copy files.
+                    s.put(
+                        files, args.path, PurePosixPath("/www"), progress=pbar
+                    )
+                finally:
+                    s.close()
 
             # Queue the deployment task.
             t = pbar.add_task("Deploying", total=None)
@@ -289,6 +293,77 @@ class Restart(Command):
     def run(self, args: argparse.Namespace):
         w = self.get_webapp(args)
         w.api_queue_restart(args.env)
+
+
+class Download(Command):
+
+    command = "download"
+
+    help = (
+        "Download a file or folder from CodeRed Cloud. "
+        "By default this will also download all media and static files, "
+        "which may take a long time."
+    )
+
+    @classmethod
+    def add_args(self, p: argparse.ArgumentParser):
+        p.add_argument(*arg_webapp.args, **arg_webapp.kwargs)
+        p.add_argument(*arg_env.args, **arg_env.kwargs)
+        p.add_argument(*arg_token.args, **arg_token.kwargs)
+        p.add_argument(
+            "--path",
+            type=Path,
+            default=Path.cwd(),
+            help=(
+                "Directory in which to download the files. "
+                "Defaults to the current directory."
+            ),
+        )
+        p.add_argument(
+            "--remote",
+            type=PurePosixPath,
+            default=PurePosixPath("/www"),
+            help=(
+                "Remote directory or file on the CodeRed Cloud server to "
+                "recursively download. "
+                "Defaults to `/www` which is the main directory."
+            ),
+        )
+
+    @classmethod
+    def run(self, args: argparse.Namespace):
+        w = self.get_webapp(args)
+
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=CONSOLE,
+        ) as pbar:
+
+            s = Server(getattr(w, f"sftp_{args.env}_domain"), w.handle, "")
+
+            # Get credentials and connect.
+            t = pbar.add_task("Connecting", total=None)
+
+            # Generate a new SFTP password from CodeRed Cloud API.
+            passwd = w.api_get_sftp_password(args.env)
+
+            try:
+                # Connect to the webapp's server.
+                s.passwd = passwd
+                s.connect()
+
+                # Initiate SFTP mode.
+                s.open_sftp()
+                pbar.update(t, total=1, completed=1)
+
+                # Copy files.
+                s.get(args.remote, args.path, progress=pbar)
+            finally:
+                s.close()
 
 
 class Upload(Command):
@@ -358,17 +433,19 @@ class Upload(Command):
             # Generate a new SFTP password from CodeRed Cloud API.
             passwd = w.api_get_sftp_password(args.env)
 
-            # Connect to the webapp's server.
-            s.passwd = passwd
-            s.connect()
+            try:
+                # Connect to the webapp's server.
+                s.passwd = passwd
+                s.connect()
 
-            # Initiate SFTP mode.
-            s.open_sftp()
-            pbar.update(t, total=1, completed=1)
+                # Initiate SFTP mode.
+                s.open_sftp()
+                pbar.update(t, total=1, completed=1)
 
-            # Copy files.
-            s.put(files, args.path, args.remote, progress=pbar)
-            s.close()
+                # Copy files.
+                s.put(files, args.path, args.remote, progress=pbar)
+            finally:
+                s.close()
 
 
 def runcli() -> None:
@@ -378,6 +455,7 @@ def runcli() -> None:
 
     commands = [
         Deploy,
+        Download,
         Restart,
         Upload,
     ]
