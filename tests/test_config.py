@@ -1,6 +1,5 @@
 from pathlib import Path, PurePosixPath
 import unittest
-import os
 
 from cr.config import (
     load_config,
@@ -32,23 +31,38 @@ test_str = demo_str
 
 class TestCli(unittest.TestCase):
     def setUp(self):
-        # Write a config file.
-        self.custom_config = Path(".test-config.ini")
-        with open(self.custom_config, "w") as f:
+        # Check for and/or create config files.
+        self.delete_home = False
+        self.conf_home = Path("~/.cr.ini").expanduser().resolve()
+        if not self.conf_home.exists():
+            self.delete_home = True
+            self.conf_home.touch()
+        self.delete_cwd = False
+        self.conf_cwd = Path(".cr.ini").resolve()
+        if not self.conf_cwd.exists():
+            self.delete_cwd = True
+            self.conf_cwd.touch()
+        # Write a custom config file.
+        self.conf_custom = Path(".test-config.ini").resolve()
+        with open(self.conf_custom, "w") as f:
             f.write(TEST_CONFIG)
         # Load the config.
-        load_config([self.custom_config])
+        load_config([self.conf_custom])
 
     def tearDown(self):
-        # Delete the config file.
-        os.remove(self.custom_config)
+        # Delete the config files.
+        self.conf_custom.unlink()
+        if self.delete_home:
+            self.conf_home.unlink()
+        if self.delete_cwd:
+            self.conf_cwd.unlink()
 
     def test_loadconfig(self):
-        paths = load_config([self.custom_config])
+        paths = load_config([self.conf_custom])
         # Assert that the expected config files were loaded.
-        self.assertTrue(str(Path("~/.cr.ini").expanduser().resolve()) in paths)
-        self.assertTrue(str(Path(".cr.ini").resolve()) in paths)
-        self.assertTrue(str(self.custom_config) in paths)
+        self.assertTrue(str(self.conf_home) in paths)
+        self.assertTrue(str(self.conf_cwd) in paths)
+        self.assertTrue(str(self.conf_custom) in paths)
 
     def test_config(self):
         self.assertEqual(config("test_str"), "cr_str")
