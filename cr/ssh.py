@@ -3,6 +3,7 @@ Utilities for interacting with CodeRed Cloud host servers.
 
 Copyright (c) 2022 CodeRed LLC.
 """
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import List, Optional
 import stat
@@ -12,7 +13,20 @@ from paramiko.client import AutoAddPolicy, SSHClient
 from paramiko.sftp_client import SFTPClient
 from rich.progress import Progress
 
+from cr import LOGGER
 from cr.utils import EXCLUDE_DIRNAMES
+
+
+@dataclass
+class TransferPath:
+    """
+    Hold info about a file that exists on both the server and locally.
+    """
+
+    local: Path
+    relative: PurePosixPath
+    remote: PurePosixPath
+    remote_st_mode: Optional[int]
 
 
 class Server:
@@ -69,10 +83,10 @@ class Server:
         progress: Progress = None,
     ) -> None:
         """
-        Recursively SFTP a Path ``r`` to the server path ``s``.
-        File and directory structure within ``r`` is mirrored to ``s``.
-        If ``r`` is a file, upload it directly into ``s``.
-        Progress bar ``p`` is updated with a task for each file upload.
+        Upload a list of paths ``lp``, relative to local root Path ``r`` to
+        the server path ``s``. File and directory structure within ``r`` is
+        mirrored to ``s``. Progress bar ``p`` is updated with a task for each
+        file upload.
         """
         # Connect.
         sftp = self.open_sftp()
@@ -110,12 +124,14 @@ class Server:
         self,
         s: PurePosixPath,
         r: Path,
+        e: List[PurePosixPath] = [],
         progress: Progress = None,
     ) -> None:
         """
         Recursively download a Path ``s`` from the server to local directory ``r``.
         File and directory structure within ``s`` is mirrored to ``r``.
         If ``s`` is a file, download it directly into ``r``.
+        Do not download any directories in ``e`` (relative to ``s``).
         Progress bar ``p`` is updated with a task for each file download.
         """
         # Connect.
@@ -125,14 +141,16 @@ class Server:
         if r.is_file():
             r = r.parent
 
-        # Traverse server path and download files.
         if progress:
             t = progress.add_task("Scanning", total=None)
 
-        def get_files(sp: PurePosixPath, t, count: int = 0) -> int:
+        def walk_remote(
+            sp: PurePosixPath,
+            lp: List[TransferPath] = [],
+        ) -> List[TransferPath]:
             """
-            Recursively downloads remote dir ``sp``, and returns number of
-            files download.
+            Recursively scan remote dir ``sp``, and return list of files and
+            directories to download ``lp``.
             """
             items = sftp.listdir_attr(str(sp))
             for item in items:
@@ -141,41 +159,64 @@ class Server:
                 fullpath = sp / item.filename
                 relpath = fullpath.relative_to(s)
                 localpath = r / relpath
+                tp = TransferPath(
+                    relative=relpath,
+                    remote=fullpath,
+                    remote_st_mode=item.st_mode,
+                    local=localpath,
+                )
 
                 # Apparently this can be None, according to mypy.
                 if item.st_mode is None:
-                    raise Exception(f"SFTP stat mode undefined `{fullpath}`.")
+                    LOGGER.warning(f"SFTP stat mode undefined `{fullpath}`.")
+                    lp.append(tp)
 
-                # If it is a directory...
-                if stat.S_ISDIR(item.st_mode):
+                # If it is a directory.
+                elif stat.S_ISDIR(item.st_mode):
                     # Skip over hidden or excluded dirs.
                     if (
                         item.filename.startswith(".")
                         or item.filename in EXCLUDE_DIRNAMES
-                        or item.filename in ["static", "cache", "media"]
+                        or relpath in e
                     ):
                         continue
 
-                    # Make a local directly to match the server path.
-                    if progress:
-                        progress.print(f"[cr.progress_print]MKDIR {relpath}[/]")
-                    os.makedirs(localpath, exist_ok=True)
+                    # Add to the list.
+                    lp.append(tp)
 
                     # Recursively traverse this directory.
-                    count = get_files(fullpath, t, count)
+                    lp = walk_remote(fullpath, lp)
 
-                # Else download the file.
-                else:
-                    if progress:
-                        progress.print(f"[cr.progress_print]GET   {relpath}[/]")
-                    sftp.get(str(fullpath), str(localpath))
-                    count += 1
-                    if progress and t:
-                        progress.update(t, advance=1)
+                # If it is a file.
+                elif stat.S_ISREG(item.st_mode):
+                    lp.append(tp)
 
-            return count
+            return lp
 
-        # Recursively download the files.
-        num = get_files(s, t)
+        # Recursively build a list of files and directories to download.
+        ltp = walk_remote(s)
+        num = len(ltp)
+
+        # Complete scan task, and add a download task.
         if progress:
-            progress.update(t, total=num)
+            progress.update(t, total=num, completed=num)
+            t = progress.add_task("Downloading", total=num)
+
+        for tp in ltp:
+            # If it doesn't have a mode, it is probably a broken file.
+            if tp.remote_st_mode is None:
+                if progress:
+                    progress.print(f"[cr.progress_print]SKIP  {tp.relative}[/]")
+            # Make a local directory to match the server path.
+            elif stat.S_ISDIR(tp.remote_st_mode):
+                if progress:
+                    progress.print(f"[cr.progress_print]MKDIR {tp.relative}[/]")
+                os.makedirs(tp.local, exist_ok=True)
+            # Download the file.
+            elif stat.S_ISREG(tp.remote_st_mode):
+                if progress:
+                    progress.print(f"[cr.progress_print]GET   {tp.relative}[/]")
+                sftp.get(str(tp.remote), str(tp.local))
+            # Update the progress bar.
+            if progress:
+                progress.update(t, advance=1)

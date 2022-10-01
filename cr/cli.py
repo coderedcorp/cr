@@ -329,6 +329,17 @@ class Download(Command):
                 "Defaults to `/www` which is the main directory."
             ),
         )
+        p.add_argument(
+            "--exclude",
+            type=PurePosixPath,
+            nargs="*",
+            default=[PurePosixPath("cache"), PurePosixPath("static")],
+            help=(
+                "List of directories (relative to --remote) to exclude from "
+                "download. Defaults to `cache` and `static`. To also exclude "
+                "media files, specify: `--exclude cache static media`."
+            ),
+        )
 
     @classmethod
     def run(self, args: argparse.Namespace):
@@ -361,7 +372,7 @@ class Download(Command):
                 pbar.update(t, total=1, completed=1)
 
                 # Copy files.
-                s.get(args.remote, args.path, progress=pbar)
+                s.get(args.remote, args.path, args.exclude, progress=pbar)
             finally:
                 s.close()
 
