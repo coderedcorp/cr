@@ -3,7 +3,7 @@ Loads runtime variables from various config files.
 
 Copyright (c) 2022 CodeRed LLC.
 """
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import List, Optional
 import configparser
 import os
@@ -75,7 +75,7 @@ def config_bool(k, w: str = "cr", f: bool = None) -> Optional[bool]:
     return val.lower() in ["yes", "on", "true", "1"]
 
 
-def config_path_list(k, w: str = "cr") -> List[Path]:
+def config_path_list(k, w: str = "cr", f: List[Path] = []) -> List[Path]:
     """
     Queries a multi-line config (newline separated and indented) and returns
     a list of resolved paths.
@@ -92,5 +92,36 @@ def config_path_list(k, w: str = "cr") -> List[Path]:
     val = config(k, w)
     if val:
         for line in val.split("\n"):
-            lp.append(Path(line.strip(" \t\r\n")).expanduser().resolve())
+            line = line.strip(" \t\r\n")
+            if line:
+                lp.append(Path(line).expanduser().resolve())
+    if not lp:
+        return f
+    return lp
+
+
+def config_pureposixpath_list(
+    k, w: str = "cr", f: List[PurePosixPath] = []
+) -> List[PurePosixPath]:
+    """
+    Queries a multi-line config (newline separated and indented) and returns
+    a list of paths.
+
+    Multi-lines should be formatted as so:
+
+        [section]
+        key =
+            line1
+            line2
+        another-key = ...
+    """
+    lp = []
+    val = config(k, w)
+    if val:
+        for line in val.split("\n"):
+            line = line.strip(" \t\r\n")
+            if line:
+                lp.append(PurePosixPath(line))
+    if not lp:
+        return f
     return lp

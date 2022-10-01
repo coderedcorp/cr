@@ -37,7 +37,12 @@ from rich.progress import (
 )
 from cr import __version__, DOCS_LINK, LOGGER, UserCancelError
 from cr.api import Env, Webapp
-from cr.config import config, load_config
+from cr.config import (
+    config,
+    config_path_list,
+    config_pureposixpath_list,
+    load_config,
+)
 from cr.rich_utils import (
     CONSOLE,
     CONSOLE_ERR,
@@ -243,7 +248,9 @@ class Deploy(Command):
             if not args.no_upload:
                 # Get list of paths to copy.
                 exclude = git_ignored(args.path)
-                files = paths_to_deploy(args.path, e=exclude)
+                exclude += config_path_list("deploy_exclude", args.webapp, [])
+                include = config_path_list("deploy_include", args.webapp, [])
+                files = paths_to_deploy(args.path, e=exclude, i=include)
                 s = Server(getattr(w, f"sftp_{args.env}_domain"), w.handle, "")
 
                 # Get credentials and connect.
@@ -301,7 +308,7 @@ class Download(Command):
 
     help = (
         "Download a file or folder from CodeRed Cloud. "
-        "By default this will also download all media and static files, "
+        "By default this will also download all media files, "
         "which may take a long time."
     )
 
@@ -333,17 +340,29 @@ class Download(Command):
             "--exclude",
             type=PurePosixPath,
             nargs="*",
-            default=[PurePosixPath("cache"), PurePosixPath("static")],
+            default=[],
             help=(
                 "List of directories (relative to --remote) to exclude from "
-                "download. Defaults to `cache` and `static`. To also exclude "
-                "media files, specify: `--exclude cache static media`."
+                "download. "
+                "Defaults to `cache` `static` `wp-content/cache`."
             ),
         )
 
     @classmethod
     def run(self, args: argparse.Namespace):
         w = self.get_webapp(args)
+
+        exclude = args.exclude
+        if not exclude:
+            exclude = config_pureposixpath_list(
+                "download_exclude",
+                args.webapp,
+                [
+                    PurePosixPath("cache"),
+                    PurePosixPath("static"),
+                    PurePosixPath("wp-content/cache"),
+                ],
+            )
 
         with Progress(
             TextColumn("[progress.description]{task.description}"),
@@ -372,7 +391,7 @@ class Download(Command):
                 pbar.update(t, total=1, completed=1)
 
                 # Copy files.
-                s.get(args.remote, args.path, args.exclude, progress=pbar)
+                s.get(args.remote, args.path, e=exclude, progress=pbar)
             finally:
                 s.close()
 
@@ -433,7 +452,9 @@ class Upload(Command):
             # Get list of paths to copy.
             if args.path.is_dir():
                 exclude = git_ignored(args.path)
-                files = paths_to_deploy(args.path, e=exclude)
+                exclude += config_path_list("deploy_exclude", args.webapp, [])
+                include = config_path_list("deploy_include", args.webapp, [])
+                files = paths_to_deploy(args.path, e=exclude, i=include)
             else:
                 files = [args.path]
             s = Server(getattr(w, f"sftp_{args.env}_domain"), w.handle, "")

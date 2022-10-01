@@ -194,8 +194,15 @@ def paths_to_deploy(
     """
     Walk the root local directory ``r`` and build a list of absolute file
     and directory paths which should be included in the deployment.
+
     Paths in ``e`` will be excluded.
+
     Paths in ``i`` will be included, even if they are excluded by ``e``.
+    However, a path in ``i`` which is a subpath of an exluded directory in ``e``
+    will still be ignored.
+
+    Any file paths in the returned list must also include their parent directory
+    paths within ``r``, so that consumers of this list will know to create them.
     """
     lp: List[Path] = []
     for root, dirs, files in os.walk(r):

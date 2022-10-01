@@ -142,7 +142,7 @@ class Server:
             r = r.parent
 
         if progress:
-            t = progress.add_task("Scanning", total=None)
+            t = progress.add_task("Finding files", total=None)
 
         def walk_remote(
             sp: PurePosixPath,
@@ -175,9 +175,9 @@ class Server:
                 elif stat.S_ISDIR(item.st_mode):
                     # Skip over hidden or excluded dirs.
                     if (
-                        item.filename.startswith(".")
+                        relpath in e
+                        or item.filename.startswith(".")
                         or item.filename in EXCLUDE_DIRNAMES
-                        or relpath in e
                     ):
                         continue
 
@@ -189,19 +189,40 @@ class Server:
 
                 # If it is a file.
                 elif stat.S_ISREG(item.st_mode):
+                    # Skip over excluded files.
+                    if relpath in e:
+                        continue
+
+                    # Add to the list.
                     lp.append(tp)
 
             return lp
 
-        # Recursively build a list of files and directories to download.
-        ltp = walk_remote(s)
-        num = len(ltp)
+        # Lookup ``s`` on the server.
+        st = sftp.lstat(str(s))
+
+        # If ``s`` is a directory, recursively build a list of files and
+        # directories to download.
+        if st.st_mode is not None and stat.S_ISDIR(st.st_mode):
+            ltp = walk_remote(s)
+        # Otherwise queue just the file.
+        else:
+            ltp = [
+                TransferPath(
+                    remote=s,
+                    remote_st_mode=st.st_mode,
+                    relative=PurePosixPath(s.name),
+                    local=r / s.name,
+                )
+            ]
 
         # Complete scan task, and add a download task.
         if progress:
+            num = len(ltp)
             progress.update(t, total=num, completed=num)
             t = progress.add_task("Downloading", total=num)
 
+        os.makedirs(r, exist_ok=True)
         for tp in ltp:
             # If it doesn't have a mode, it is probably a broken file.
             if tp.remote_st_mode is None:
