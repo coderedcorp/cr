@@ -1,10 +1,10 @@
 import logging
 
 
-__version__ = "1.0"
+__version__ = "1.1"
 
 
-DOCS_LINK = "http://codered.cloud/cli"
+DOCS_LINK = "https://www.codered.cloud/cli/"
 
 
 # Logger for this module.
