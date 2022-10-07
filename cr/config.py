@@ -23,13 +23,15 @@ def load_config(lp: List[Path] = []) -> List[str]:
     """
     Reads config files from pre-defined paths, plus any additional paths ``lp``.
     """
-    return _CONFIG.read(
+    read = _CONFIG.read(
         [
             Path("~/.cr.ini").expanduser().resolve(),
             Path(".cr.ini").resolve(),
             *lp,
         ]
     )
+    LOGGER.info("Read config files: %s", read)
+    return read
 
 
 def config(k, w: str = "cr", f: str = None) -> Optional[str]:
@@ -39,25 +41,25 @@ def config(k, w: str = "cr", f: str = None) -> Optional[str]:
 
     Priority is as follows, each bullet in the list overriding those before it.
 
-    * Environment variables
     * [cr] section in ~/.cr.ini
     * [cr] section in ./.cr.ini
     * [``w``] section in ~/.cr.ini
     * [``w``] section in ./.cr.ini
+    * Environment variables
 
     If the key is not found, return fallback ``f``.
     """
     val = f
 
-    # Query secret configs from env vars first.
-    if k in _SECRETS:
-        val = os.environ.get(f"CR_{k.upper()}", val)
-
-    # Query the config, which will override any env vars.
+    # Query the config files.
     if w in _CONFIG:
         val = _CONFIG[w].get(k, val)
     else:
         val = _CONFIG.defaults().get(k, val)
+
+    # Query secret configs from env vars to override files.
+    if k in _SECRETS:
+        val = os.environ.get(f"CR_{k.upper()}", val)
 
     LOGGER.debug("Config `%s`: `%s`", k, val)
 
