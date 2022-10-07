@@ -178,7 +178,7 @@ class Command:
         if hasattr(args, "path"):
             args.path = args.path.expanduser().resolve()
             if args.path.is_dir():
-                extra_configs = [args.path]
+                extra_configs = [args.path / ".cr.ini"]
 
         # Load configs, including path if provided.
         load_config(extra_configs)
