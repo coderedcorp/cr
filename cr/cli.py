@@ -280,6 +280,12 @@ class Deploy(Command):
             w.api_queue_deploy(args.env)
             pbar.update(t, total=1, completed=1)
 
+        CONSOLE.print(
+            "Deployment in progress. You will receive an email when complete."
+            "\n\n"
+            f"Deploying: {w.primary_url}"
+        )
+
 
 class Restart(Command):
 
@@ -300,6 +306,11 @@ class Restart(Command):
     def run(self, args: argparse.Namespace):
         w = self.get_webapp(args)
         w.api_queue_restart(args.env)
+        CONSOLE.print(
+            "Restart in progress. You will receive an email when complete."
+            "\n\n"
+            f"Restarting: {w.primary_url}"
+        )
 
 
 class Download(Command):

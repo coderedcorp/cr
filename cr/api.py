@@ -167,6 +167,8 @@ class Webapp:
                 "task_type": "init",
             },
         )
+        if status >= 400:
+            raise Exception("Error queueing deploy task.")
         LOGGER.info("Task created: %s", d)
 
     def api_queue_restart(self, env: Env) -> None:
@@ -180,6 +182,8 @@ class Webapp:
                 "task_type": "restart",
             },
         )
+        if status >= 400:
+            raise Exception("Error queueing restart task.")
         LOGGER.info("Task created: %s", d)
 
 
