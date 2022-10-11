@@ -1,128 +1,138 @@
 # See: https://aka.ms/yaml
 
 trigger:
-  - main
+- main
 
 stages:
-  - stage: Quality_Control
-    displayName: Quality Control
-    jobs:
+- stage: Quality_Control
+  displayName: Quality Control
+  jobs:
 
-      # Run the linters once on the latest version of linux. If this
-      # fails, stop the pipeline before running heavy
-      # platform-specific unit tests and builds.
-      - job: lint
-        displayName: Lint
-        pool:
-          vmImage: "ubuntu-latest"
-        steps:
-          - task: UsePythonVersion@0
-            displayName: "Use Python version"
-            inputs:
-              versionSpec: "3.10"
-              architecture: "x64"
+  # Run the linters once on the latest version of linux, and each
+  # supported version of Python. If this fails, stop the pipeline
+  # before running heavy platform-specific unit tests and builds.
+  - job: lint
+    displayName: Lint
+    pool:
+      vmImage: "ubuntu-latest"
+    strategy:
+      matrix:
+        py37:
+          PYTHON_VERSION: '3.7'
+        py38:
+          PYTHON_VERSION: '3.8'
+        py39:
+          PYTHON_VERSION: '3.9'
+        py310:
+          PYTHON_VERSION: '3.10'
+    steps:
+      - task: UsePythonVersion@0
+        displayName: "Use Python version"
+        inputs:
+          versionSpec: '$(PYTHON_VERSION)'
+          architecture: "x64"
 
-          - script: python -m pip install -r requirements-dev.txt
-            displayName: "CR-QC: Install local package"
+      - script: python -m pip install -r requirements-dev.txt
+        displayName: "CR-QC: Install local package"
 
-          - script: cr --help
-            displayName: "CR-QC: Run CLI"
+      - script: cr --help
+        displayName: "CR-QC: Run CLI"
 
-          - script: flake8 .
-            displayName: "CR-QC: flake8"
+      - script: flake8 .
+        displayName: "CR-QC: flake8"
 
-          - script: mypy .
-            displayName: "CR-QC: mypy"
+      - script: mypy .
+        displayName: "CR-QC: mypy"
 
-          - script: black --check .
-            displayName: "CR-QC: black"
+      - script: black --check .
+        displayName: "CR-QC: black"
 
 
-  # Run tests and build bundles for each platform.
-  - stage: Build_Dist
-    displayName: Build Distributables
-    dependsOn: Quality_Control
-    condition: succeeded('Quality_Control')
-    jobs:
-      - job: windows10
-        displayName: Windows 10
-        pool:
-          vmImage: "windows-2019"
-        steps:
-          - task: UsePythonVersion@0
-            displayName: "Use Python version"
-            inputs:
-              versionSpec: "3.10"
-              architecture: "x64"
+# Run tests and build bundles for each platform.
+- stage: Build_Dist
+  displayName: Build Distributables
+  dependsOn: Quality_Control
+  condition: succeeded('Quality_Control')
+  jobs:
+  - job: windows10
+    displayName: Windows 10
+    pool:
+      vmImage: "windows-2019"
+    steps:
+    - task: UsePythonVersion@0
+      displayName: "Use Python version"
+      inputs:
+        versionSpec: "3.10"
+        architecture: "x64"
 
-          - script: python -m pip install -r requirements-pipeline.txt
-            displayName: "CR-QC: Install"
+    - script: python -m pip install -r requirements-pipeline.txt
+      displayName: "CR-QC: Install"
 
-          - script: pytest
-            displayName: "CR-QC: Test"
+    - script: pytest
+      displayName: "CR-QC: Test"
 
-          - script: pyinstaller --clean --dist ./dist/ ./cr.spec
-            displayName: "CR-BLD: Build"
+    - script: pyinstaller --clean --dist ./dist/ ./cr.spec
+      displayName: "CR-BLD: Build"
 
-          - publish: $(System.DefaultWorkingDirectory)\dist\cr.exe
-            artifact: cr.exe
+    - publish: $(System.DefaultWorkingDirectory)\dist\cr.exe
+      artifact: cr.exe
 
-      - job: macos11
-        displayName: macOS 11
-        pool:
-          vmImage: "macOS-11"
+  - job: macos11
+    displayName: macOS 11
+    pool:
+      vmImage: "macOS-11"
 
-        steps:
-          - task: UsePythonVersion@0
-            displayName: "Use Python version"
-            inputs:
-              versionSpec: "3.10"
-              architecture: "x64"
+    steps:
+    - task: UsePythonVersion@0
+      displayName: "Use Python version"
+      inputs:
+        versionSpec: "3.10"
+        architecture: "x64"
 
-          - script: python -m pip install -r requirements-pipeline.txt
-            displayName: "CR-QC: Install"
+    - script: python -m pip install -r requirements-pipeline.txt
+      displayName: "CR-QC: Install"
 
-          - script: pytest
-            displayName: "CR-QC: Test"
+    - script: pytest
+      displayName: "CR-QC: Test"
 
-          - script: pyinstaller --clean --dist ./dist/ ./cr.spec
-            displayName: "CR-BLD: Build"
+    - script: pyinstaller --clean --dist ./dist/ ./cr.spec
+      displayName: "CR-BLD: Build"
 
-          - script: mv ./dist/cr ./dist/cr-macos
-            displayName: "CR-BLD: Rename"
+    - script: mv ./dist/cr ./dist/cr-macos
+      displayName: "CR-BLD: Rename"
 
-          - publish: $(System.DefaultWorkingDirectory)/dist/cr-macos
-            artifact: cr-macos
+    - publish: $(System.DefaultWorkingDirectory)/dist/cr-macos
+      artifact: cr-macos
 
-      - job: ubuntu2004
-        displayName: Ubuntu 20.04
-        pool:
-          vmImage: "ubuntu-20.04"
+  - job: ubuntu2004
+    displayName: Ubuntu 20.04
+    pool:
+      vmImage: "ubuntu-20.04"
 
-        steps:
-          - task: UsePythonVersion@0
-            displayName: "Use Python version"
-            inputs:
-              versionSpec: "3.10"
-              architecture: "x64"
+    steps:
+    - task: UsePythonVersion@0
+      displayName: "Use Python version"
+      inputs:
+        versionSpec: "3.10"
+        architecture: "x64"
 
-          - script: python -m pip install -r requirements-pipeline.txt
-            displayName: "CR-QC: Install"
+    - script: python -m pip install -r requirements-pipeline.txt
+      displayName: "CR-QC: Install"
 
-          - script: pytest
-            displayName: "CR-QC: Test"
+    - script: pytest
+      displayName: "CR-QC: Test"
 
-          - script: pyinstaller --clean --dist ./dist/ ./cr.spec
-            displayName: "CR-BLD: Build"
+    - script: pyinstaller --clean --dist ./dist/ ./cr.spec
+      displayName: "CR-BLD: Build"
 
-          - script: mv ./dist/cr ./dist/cr-linux
-            displayName: "CR-BLD: Rename"
+    - script: mv ./dist/cr ./dist/cr-linux
+      displayName: "CR-BLD: Rename"
 
-          - publish: $(System.DefaultWorkingDirectory)/dist/cr-linux
-            artifact: cr-linux
+    - publish: $(System.DefaultWorkingDirectory)/dist/cr-linux
+      artifact: cr-linux
 
-          - script: python -m build --outdir ./dist/pypi/
-            displayName: "CR-BLD: PyPI"
+    - script: python -m build --outdir ./dist/pypi/
+      displayName: "CR-BLD: PyPI"
 
-          - publish: $(System.DefaultWorkingDirectory)/dist/pypi/
-            artifact: pypi
+    - publish: $(System.DefaultWorkingDirectory)/dist/pypi/
+      artifact: pypi

@@ -3,7 +3,7 @@ Utilities to format program output with `rich`.
 
 Copyright (c) 2022 CodeRed LLC.
 """
-from typing import Generator, Iterable
+from typing import Generator, Iterable, List, Optional
 import argparse
 
 from rich.console import Console, Group, RenderableType, WINDOWS
@@ -173,13 +173,13 @@ class RichArgparseFormatter(
         prog: str,
         indent_increment: int = 2,
         max_help_position: int = 38,
-        width: int | None = None,
+        width: Optional[int] = None,
     ) -> None:
         super().__init__(prog, indent_increment, max_help_position, width)
         self._root_section.renderables = []
 
     @property
-    def renderables(self) -> list[RenderableType]:
+    def renderables(self) -> List[RenderableType]:
         return self._current_section.renderables  # type: ignore[no-any-return]
 
     @property
@@ -209,7 +209,7 @@ class RichArgparseFormatter(
 
         return action_invocation
 
-    def add_text(self, text: str | None) -> None:
+    def add_text(self, text: Optional[str]) -> None:
         super().add_text(text)
 
         if text is not argparse.SUPPRESS and text is not None:
@@ -248,10 +248,10 @@ class RichArgparseFormatter(
 
     def add_usage(
         self,
-        usage: str | None,
+        usage: Optional[str],
         actions: Iterable[argparse.Action],
         groups: Iterable[argparse._ArgumentGroup],
-        prefix: str | None = None,
+        prefix: Optional[str] = None,
     ) -> None:
         # Do not pass prefix along... instead format it as a group title.
         super().add_usage(usage, actions, groups, prefix)
@@ -266,10 +266,10 @@ class RichArgparseFormatter(
 
     def _format_usage(
         self,
-        usage: str | None,
+        usage: Optional[str],
         actions: Iterable[argparse.Action],
         groups: Iterable[argparse._ArgumentGroup],
-        prefix: str | None = None,
+        prefix: Optional[str] = None,
     ):
         """
         Override to generate a shorter / more concise version of the usage.
@@ -310,7 +310,7 @@ class RichArgparseFormatter(
 
         return usage
 
-    def start_section(self, heading: str | None) -> None:
+    def start_section(self, heading: Optional[str]) -> None:
         super().start_section(
             heading
         )  # sets self._current_section to child section
