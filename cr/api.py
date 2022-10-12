@@ -150,10 +150,16 @@ class Webapp:
                 "task_type": "resetpassword",
             },
         )
-        if "password" in d:
-            return d["password"]
+        # If the password is returned, it will be in the "returned data" field
+        re_data = d.get("returned_data", {})
+
+        if "password" in re_data:
+            return re_data["password"]
         if "error" in d:
             error = d["error"]
+            raise Exception(f"Host Error: {error}")
+        if "error" in re_data:
+            error = re_data["error"]
             raise Exception(f"Host Error: {error}")
         raise Exception("SFTP password not available. Please contact support.")
 
