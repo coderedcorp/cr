@@ -38,6 +38,7 @@ RICH_THEME = Theme(
         "cr.argparse_text": "default",
         "cr.code": "bright_magenta",
         "cr.progress_print": "bright_black",
+        "cr.update_border": "bright_black",
     }
 )
 

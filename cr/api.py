@@ -12,9 +12,10 @@ import enum
 import json
 
 from rich.console import Console
+from rich.panel import Panel
 import certifi
 
-from cr import __version__, DOCS_LINK, LOGGER, USER_AGENT, UserCancelError
+from cr import VERSION, DOCS_LINK, LOGGER, USER_AGENT, UserCancelError
 
 
 class AppType(enum.Enum):
@@ -274,17 +275,24 @@ def coderedapi(
 
 def check_update(c: Optional[Console] = None) -> bool:
     """
-    Check if a new version is available on PyPI and print to Console ``c``.
+    Check if a new version is available and print to Console ``c``.
     If this fails or takes longer than 1 second, simply ignore it.
     """
     try:
-        _, pypi = request_json("https://pypi.org/pypi/{NAME}/json", timeout=2)
-        if __version__ != pypi["info"]["version"]:
+        _, gh = request_json(
+            "https://api.github.com/repos/coderedcorp/cr/releases/latest",
+            timeout=1,
+        )
+        newver = gh["tag_name"].strip("vV")
+        if VERSION != newver:
             if c:
-                c.print(
-                    f"A newer version of `cr` is availabe! See: {DOCS_LINK}"
+                p = Panel(
+                    f"Newer version of cr [cr.code]{newver}[/] is available!\n"
+                    f"See: {DOCS_LINK}",
+                    border_style="cr.update_border",
                 )
+                c.print(p)
             return True
     except Exception as exc:
-        LOGGER.warning("Error checking version on PyPI", exc_info=exc)
+        LOGGER.warning("Error checking for update.", exc_info=exc)
     return False

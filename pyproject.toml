@@ -60,4 +60,4 @@ ignore_missing_imports = true
 packages = ["cr"]
 
 [tool.setuptools.dynamic]
-version = {attr = "cr.__version__"}
+version = {attr = "cr.VERSION"}

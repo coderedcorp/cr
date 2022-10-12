@@ -35,8 +35,8 @@ from rich.progress import (
     TimeElapsedColumn,
     TextColumn,
 )
-from cr import __version__, DOCS_LINK, LOGGER, UserCancelError
-from cr.api import Env, Webapp
+from cr import VERSION, DOCS_LINK, LOGGER, UserCancelError
+from cr.api import Env, Webapp, check_update
 from cr.config import (
     config,
     config_path_list,
@@ -572,7 +572,7 @@ def runcli() -> None:
 
     # Version.
     if args.version:
-        CONSOLE.print(f"{parser.prog} version {__version__}")
+        CONSOLE.print(f"{parser.prog} version {VERSION}")
         return
 
     # No sub-command provided.
@@ -590,19 +590,19 @@ def runcli() -> None:
 def main():
     try:
         runcli()
-        # check_update(CONSOLE_ERR)
+        check_update(CONSOLE_ERR)
     # User hit Ctrl-C or manually cancelled.
     except (KeyboardInterrupt, UserCancelError):
         LOGGER.warning("Fatal: User cancelled the operation.")
         CONSOLE_ERR.print("User cancelled the operation.")
         osc_reset(CONSOLE)
-        # check_update(CONSOLE_ERR)
+        check_update(CONSOLE_ERR)
         sys.exit(2)
     except Exception as err:
         LOGGER.exception("Fatal: %s", err)
         CONSOLE_ERR.print("[red]Error:[/]", err)
         osc_reset(CONSOLE)
-        # check_update(CONSOLE_ERR)
+        check_update(CONSOLE_ERR)
         sys.exit(1)
 
 

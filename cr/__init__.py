@@ -1,7 +1,7 @@
 import logging
 
 
-__version__ = "1.1"
+VERSION = "1.1"
 
 
 DOCS_LINK = "https://www.codered.cloud/cli/"
@@ -11,7 +11,7 @@ DOCS_LINK = "https://www.codered.cloud/cli/"
 LOGGER = logging.getLogger("cr")
 
 
-USER_AGENT = f"CodeRed-CLI/{__version__} ({DOCS_LINK})"
+USER_AGENT = f"CodeRed-CLI/{VERSION} ({DOCS_LINK})"
 
 
 class UserCancelError(Exception):
