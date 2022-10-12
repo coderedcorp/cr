@@ -10,6 +10,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 import enum
 import json
+import time
 
 from rich.console import Console
 from rich.panel import Panel
@@ -163,7 +164,10 @@ class Webapp:
             raise Exception(f"Host Error: {error}")
         raise Exception("SFTP password not available. Please contact support.")
 
-    def api_queue_deploy(self, env: Env):
+    def api_queue_deploy(self, env: Env) -> int:
+        """
+        Queue a deploy task and return the task ID.
+        """
         status, d = coderedapi(
             "/api/tasks/",
             "POST",
@@ -177,8 +181,12 @@ class Webapp:
         if status >= 400:
             raise Exception("Error queueing deploy task.")
         LOGGER.info("Task created: %s", d)
+        return d["id"]
 
-    def api_queue_restart(self, env: Env) -> None:
+    def api_queue_restart(self, env: Env) -> int:
+        """
+        Queue a restart task and return the task ID.
+        """
         status, d = coderedapi(
             "/api/tasks/",
             "POST",
@@ -192,7 +200,52 @@ class Webapp:
         if status >= 400:
             raise Exception("Error queueing restart task.")
         LOGGER.info("Task created: %s", d)
+        return d["id"]
 
+    def api_get_logs(self, env: Env, since: int = 0) -> List[dict]:
+        status, d = coderedapi(
+            f"/api/tasks/",
+            "POST",
+            self.token,
+            data={
+                "webapp": self.id,
+                "env": env.value,
+                "task_type": "getlog",
+                "query_params": {"since": since},
+            },
+        )
+        if status >= 400:
+            raise Exception("Error getting deployment log.")
+        return d["returned_data"]
+
+    def api_get_task(self, task_id: int) -> dict:
+        """
+        Check a task's status and return the dict from coderedapi.
+        """
+        status, d = coderedapi(
+            f"/api/tasks/{task_id}/",
+            "GET",
+            self.token,
+        )
+        if status >= 400:
+            raise Exception(f"Could not query task ID {task_id}")
+        LOGGER.info("Task: %s", d)
+        return d
+
+    def api_poll_task(self, task_id: int) -> dict:
+        """
+        Blocking function to poll a task until it completes.
+
+        Returns the completed task dict.
+
+        Raises TimeoutError if the task does not complete after a few minutes.
+        """
+        for i in range(20):
+            d = self.api_get_task(task_id)
+            if d["status"] == "completed":
+                return d
+            time.sleep(10)
+        raise TimeoutError(f"Task ID {task_id} has not completed.")
 
 def _response_to_json(r: Union[HTTPResponse, HTTPError]) -> dict:
     """

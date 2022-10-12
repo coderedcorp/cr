@@ -26,6 +26,7 @@ from pathlib import Path, PurePosixPath
 import argparse
 import logging
 import sys
+import time
 
 from rich.logging import RichHandler
 from rich.progress import (
@@ -313,6 +314,63 @@ class Restart(Command):
         )
 
 
+class Logs(Command):
+
+    command = "logs"
+
+    help = "Show the latest deployment logs."
+
+    @classmethod
+    def add_args(self, p: argparse.ArgumentParser):
+        p.add_argument(*arg_webapp.args, **arg_webapp.kwargs)
+        p.add_argument(*arg_env.args, **arg_env.kwargs)
+        p.add_argument(*arg_token.args, **arg_token.kwargs)
+
+    @classmethod
+    def run(self, args: argparse.Namespace):
+        w = self.get_webapp(args)
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=CONSOLE,
+        ) as pbar:
+            t = pbar.add_task("Getting logs", total=None)
+            pbar.print(
+                "[getting logs]", markup=False, style="cr.progress_print"
+            )
+            # Loop for a given amount of time, or until an EOT is found.
+            kill = False
+            since = 0
+            for i in range(18):
+                data = w.api_get_logs(args.env, since=since)
+                logs = data["logs"]
+                if not logs:
+                    kill = True
+                for line in logs:
+                    text = line["log"]
+                    since = line["datetime"]
+                    style= ""
+                    if line["source"] == "stderr":
+                        style = "logging.level.warning"
+                    pbar.print(
+                        f"> {text}",
+                        markup=False,
+                        highlight=False,
+                        style=style,
+                    )
+                    if "\x04" in text:
+                        kill = True
+                    time.sleep(0.1)
+                if kill:
+                    break
+                time.sleep(10)
+            pbar.print(
+                "[connection closed]", markup=False, style="cr.progress_print"
+            )
+            pbar.update(t, completed=1, total=1)
+
+
 class Download(Command):
 
     command = "download"
@@ -499,6 +557,7 @@ def runcli() -> None:
     commands = [
         Deploy,
         Download,
+        Logs,
         Restart,
         Upload,
     ]
@@ -579,9 +638,6 @@ def runcli() -> None:
     if not args.command:
         parser.print_help()
         return
-
-    # Give the user some immediate feedback.
-    CONSOLE.print(f"{args.command.title()} {args.webapp}...")
 
     # Run the sub-command.
     commands_map[args.command].run(args)

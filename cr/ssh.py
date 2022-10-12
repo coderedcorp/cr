@@ -110,12 +110,16 @@ class Server:
                 except FileNotFoundError:
                     if progress:
                         progress.print(
-                            f"[cr.progress_print]MKDIR {relative_p}[/]"
+                            f"MKDIR {relative_p}",
+                            style="cr.progress_print",
                         )
                     sftp.mkdir(str(remote_p), mode=0o770)
             else:
                 if progress:
-                    progress.print(f"[cr.progress_print]PUT   {relative_p}[/]")
+                    progress.print(
+                        f"PUT   {relative_p}",
+                        style="cr.progress_print",
+                    )
                 sftp.put(str(p), str(remote_p))
             if progress:
                 progress.update(t, advance=1)
