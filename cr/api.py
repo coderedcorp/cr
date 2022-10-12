@@ -158,6 +158,9 @@ class Webapp:
         if "error" in d:
             error = d["error"]
             raise Exception(f"Host Error: {error}")
+        if "error" in re_data:
+            error = re_data["error"]
+            raise Exception(f"Host Error: {error}")
         raise Exception("SFTP password not available. Please contact support.")
 
     def api_queue_deploy(self, env: Env):
