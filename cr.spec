@@ -26,6 +26,7 @@ exe = EXE(
     a.datas,
     [],
     name="cr",
+    icon="icon/cr.ico",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
