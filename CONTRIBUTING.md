@@ -67,7 +67,11 @@ Publishing
 
 The Azure Pipeline will generate python packages (source dist, wheel) and binaries for Windows, macOS, and Linux.
 
-Download the dist artifact from the tagged release run of [the pipeline](https://dev.azure.com/coderedcorp/cr-github/_build?definitionId=17), sign them with our certificate (if applicable), and upload the files to GitHub when publishing a release.
+To publish:
+1. Download the dist artifact from the tagged release run of [the pipeline](https://dev.azure.com/coderedcorp/cr-github/_build?definitionId=17).
+2. Sign them with our certificate (if applicable, see below).
+3. Create a release on GitHub and upload the files.
+4. Rename `cr-0.0.tar.gz` to `cr.tar.gz`, and upload all of the built files to crcloud-static under the `/www/cli/` folder.
 
 ### On PyPI
 
