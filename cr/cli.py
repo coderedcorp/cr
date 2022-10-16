@@ -26,7 +26,6 @@ from pathlib import Path, PurePosixPath
 import argparse
 import logging
 import sys
-import time
 
 from rich.logging import RichHandler
 from rich.progress import (
@@ -335,36 +334,11 @@ class Logs(Command):
             TimeElapsedColumn(),
             console=CONSOLE,
         ) as pbar:
-            t = pbar.add_task("Getting logs", total=None)
+            t = pbar.add_task("Streaming logs", total=None)
             pbar.print(
                 "[getting logs]", markup=False, style="cr.progress_print"
             )
-            # Loop for a given amount of time, or until an EOT is found.
-            kill = False
-            since = 0
-            for i in range(18):
-                data = w.api_get_logs(args.env, since=since)
-                logs = data["logs"]
-                if not logs:
-                    kill = True
-                for line in logs:
-                    text = line["log"]
-                    since = line["datetime"]
-                    style= ""
-                    if line["source"] == "stderr":
-                        style = "logging.level.warning"
-                    pbar.print(
-                        f"> {text}",
-                        markup=False,
-                        highlight=False,
-                        style=style,
-                    )
-                    if "\x04" in text:
-                        kill = True
-                    time.sleep(0.1)
-                if kill:
-                    break
-                time.sleep(10)
+            w.api_poll_logs(args.env, pbar)
             pbar.print(
                 "[connection closed]", markup=False, style="cr.progress_print"
             )
