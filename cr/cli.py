@@ -277,14 +277,39 @@ class Deploy(Command):
 
             # Queue the deployment task.
             t = pbar.add_task("Deploying", total=None)
-            w.api_queue_deploy(args.env)
+            api_task_id = w.api_queue_deploy(args.env)
+            pbar.print(
+                f"[deployment queued with ID: {api_task_id}]",
+                markup=False,
+                style="logging.level.info",
+            )
+
+            # Poll the deployment task until it completes or times out.
+            api_task = w.api_poll_task(api_task_id)
+            if api_task["status"] != "completed":
+                msg = "Please contact support for assistance."
+                if "error" in api_task:
+                    msg = api_task["error"]
+                if (
+                    "returned_data" in api_task
+                    and "error" in api_task["returned_data"]
+                ):
+                    msg = api_task["returned_data"]["error"]
+                raise Exception(f"Deployment encountered an error: {msg}")
+
+            # Now poll the logs.
+            pbar.print(
+                "[getting deployment logs]",
+                markup=False,
+                style="logging.level.info",
+            )
+            w.api_poll_logs(args.env, pbar)
+            pbar.print(
+                "[connection closed]", markup=False, style="logging.level.info"
+            )
             pbar.update(t, total=1, completed=1)
 
-        CONSOLE.print(
-            "Deployment in progress. You will receive an email when complete."
-            "\n\n"
-            f"Deploying: {w.primary_url}"
-        )
+        CONSOLE.print(f"\nYour site is live at: {w.primary_url}\n")
 
 
 class Restart(Command):
@@ -334,13 +359,13 @@ class Logs(Command):
             TimeElapsedColumn(),
             console=CONSOLE,
         ) as pbar:
-            t = pbar.add_task("Streaming logs", total=None)
+            t = pbar.add_task("Getting logs", total=None)
             pbar.print(
-                "[getting logs]", markup=False, style="cr.progress_print"
+                "[getting logs]", markup=False, style="logging.level.info"
             )
             w.api_poll_logs(args.env, pbar)
             pbar.print(
-                "[connection closed]", markup=False, style="cr.progress_print"
+                "[connection closed]", markup=False, style="logging.level.info"
             )
             pbar.update(t, completed=1, total=1)
 
@@ -630,7 +655,7 @@ def main():
         sys.exit(2)
     except Exception as err:
         LOGGER.exception("Fatal: %s", err)
-        CONSOLE_ERR.print("[red]Error:[/]", err)
+        CONSOLE_ERR.print("[logging.level.error]Error:[/]", err)
         osc_reset(CONSOLE)
         check_update(CONSOLE_ERR)
         sys.exit(1)

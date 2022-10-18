@@ -266,13 +266,13 @@ class Webapp:
 
     def api_poll_task(self, task_id: int) -> dict:
         """
-        Blocking function to poll a task until it completes.
+        Blocking function to poll a task every 10 seconds until it completes.
 
         Returns the completed task dict.
 
-        Raises TimeoutError if the task does not complete after a few minutes.
+        Raises TimeoutError if the task does not complete after 3 minutes.
         """
-        for i in range(20):
+        for i in range(18):
             d = self.api_get_task(task_id)
             if d["status"] == "completed":
                 return d
