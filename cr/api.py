@@ -5,13 +5,15 @@ Copyright (c) 2022 CodeRed LLC.
 """
 from http.client import HTTPResponse
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 import enum
 import json
+import time
 
 from rich.console import Console
+from rich.progress import Progress
 from rich.panel import Panel
 import certifi
 
@@ -163,7 +165,10 @@ class Webapp:
             raise Exception(f"Host Error: {error}")
         raise Exception("SFTP password not available. Please contact support.")
 
-    def api_queue_deploy(self, env: Env):
+    def api_queue_deploy(self, env: Env) -> int:
+        """
+        Queue a deploy task and return the task ID.
+        """
         status, d = coderedapi(
             "/api/tasks/",
             "POST",
@@ -177,8 +182,12 @@ class Webapp:
         if status >= 400:
             raise Exception("Error queueing deploy task.")
         LOGGER.info("Task created: %s", d)
+        return d["id"]
 
-    def api_queue_restart(self, env: Env) -> None:
+    def api_queue_restart(self, env: Env) -> int:
+        """
+        Queue a restart task and return the task ID.
+        """
         status, d = coderedapi(
             "/api/tasks/",
             "POST",
@@ -192,6 +201,83 @@ class Webapp:
         if status >= 400:
             raise Exception("Error queueing restart task.")
         LOGGER.info("Task created: %s", d)
+        return d["id"]
+
+    def api_get_logs(self, env: Env, since: int = 0) -> dict:
+        status, d = coderedapi(
+            "/api/tasks/",
+            "POST",
+            self.token,
+            data={
+                "webapp": self.id,
+                "env": env.value,
+                "task_type": "getlog",
+                "query_params": {"since": since},
+            },
+        )
+        if status >= 400:
+            raise Exception("Error getting deployment log.")
+        return d["returned_data"]
+
+    def api_poll_logs(self, env: Env, progress: Progress) -> None:
+        """
+        Poll deployment logs until EOT is found, or a fixed amount of time,
+        and print to Progress.
+        """
+        kill = False
+        since = 0
+        for i in range(18):
+            data = self.api_get_logs(env, since=since)
+            logs = data["logs"]
+            if not logs:
+                kill = True
+            for line in logs:
+                text = line["log"]
+                since = line["datetime"]
+                style = ""
+                if line["source"] == "stderr":
+                    style = "logging.level.warning"
+                progress.print(
+                    f"> {text}",
+                    markup=False,
+                    highlight=False,
+                    style=style,
+                )
+                if "\x04" in text:
+                    kill = True
+                time.sleep(0.1)
+            if kill:
+                break
+            time.sleep(10)
+
+    def api_get_task(self, task_id: int) -> dict:
+        """
+        Check a task's status and return the dict from coderedapi.
+        """
+        status, d = coderedapi(
+            f"/api/tasks/{task_id}/",
+            "GET",
+            self.token,
+        )
+        if status >= 400:
+            raise Exception(f"Could not query task ID {task_id}")
+        LOGGER.info("Task: %s", d)
+        return d
+
+    def api_poll_task(self, task_id: int) -> dict:
+        """
+        Blocking function to poll a task every 10 seconds until it completes.
+
+        Returns the completed task dict.
+
+        Raises TimeoutError if the task does not complete after 3 minutes.
+        """
+        for i in range(18):
+            d = self.api_get_task(task_id)
+            if d["status"] == "completed":
+                return d
+            time.sleep(10)
+        raise TimeoutError(f"Task ID {task_id} has not completed.")
 
 
 def _response_to_json(r: Union[HTTPResponse, HTTPError]) -> dict:
@@ -251,7 +337,7 @@ def coderedapi(
     token: str,
     data: dict = None,
     ok: List[int] = [200, 201],
-) -> Tuple[int, dict]:
+) -> Tuple[int, Dict[str, Any]]:
     """
     Calls CodeRed Cloud API and returns a tuple of:
     (HTTP status code, dict of returned JSON).
