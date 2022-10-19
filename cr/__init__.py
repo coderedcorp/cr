@@ -1,7 +1,7 @@
 import logging
 
 
-VERSION = "1.2"
+VERSION = "1.3"
 
 
 DOCS_LINK = "https://www.codered.cloud/cli/"
