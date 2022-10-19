@@ -309,7 +309,7 @@ class Deploy(Command):
             )
             pbar.update(t, total=1, completed=1)
 
-        CONSOLE.print(f"\nYour site is live at: {w.primary_url}\n")
+        CONSOLE.print(f"\nYour site is live at: {w.url(args.env)}\n")
 
 
 class Restart(Command):
@@ -332,9 +332,8 @@ class Restart(Command):
         w = self.get_webapp(args)
         w.api_queue_restart(args.env)
         CONSOLE.print(
-            "Restart in progress. You will receive an email when complete."
-            "\n\n"
-            f"Restarting: {w.primary_url}"
+            f"Restarting: {w.url(args.env)}\n"
+            "You will receive an email when complete."
         )
 
 

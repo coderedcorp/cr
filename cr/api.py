@@ -89,6 +89,14 @@ class Webapp:
                 db_type=DatabaseType(dbdict["db_type"]),
             )
 
+    def url(self, env: Env) -> str:
+        """
+        Return the URL of this website based on environment.
+        """
+        if env == Env.STAGING:
+            return f"https://{self.handle}.staging.codered.cloud/"
+        return self.primary_url
+
     def local_check_path(self, p: Path, c: Optional[Console]) -> None:
         """
         Validity check for a provided Path ``p``. If Console ``c`` is provided,
