@@ -57,7 +57,7 @@ addopts = "--cov cr --cov-report html"
 ignore_missing_imports = true
 
 [tool.setuptools]
-packages = ["cr"]
+packages = ["cr", "cr.templates"]
 
 [tool.setuptools.dynamic]
 version = {attr = "cr.VERSION"}
