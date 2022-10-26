@@ -4,7 +4,7 @@ build
 coverage
 flake8
 mypy
-pyinstaller==5.4.*
+pyinstaller
 pytest
 pytest-cov
 setuptools>=61

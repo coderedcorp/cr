@@ -17,6 +17,11 @@ EXCLUDE_DIRNAMES = ["__pycache__", "node_modules", "htmlcov", "venv"]
 List of directory names to always exclude from deployments.
 """
 
+TEMPLATE_PATH = Path(__file__).parent / "templates"
+"""
+Templates directory included with this project.
+"""
+
 
 def get_command(program: str) -> Path:
     r"""
@@ -246,3 +251,11 @@ def paths_to_deploy(
                 lp.append(fpr)
 
     return lp
+
+
+def get_template(t: str) -> str:
+    """
+    Read file ``t`` from the templates directory and return it as a string.
+    """
+    template = TEMPLATE_PATH / t
+    return template.read_text()

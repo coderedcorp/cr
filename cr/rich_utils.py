@@ -30,7 +30,7 @@ RICH_THEME = Theme(
         "logging.level.warning": "yellow",
         "progress.download": "bright_green",
         "progress.percentage": "bright_magenta",
-        "prompt.choices": "bright_magenta",
+        "prompt.choices": "yellow",
         # Custom.
         "cr.argparse_args": "cyan",
         "cr.argparse_groups": "default",

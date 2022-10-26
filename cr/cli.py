@@ -140,6 +140,17 @@ arg_env = Arg(
     choices=Env,
     help=f"The environment to act upon. Default is {Env.PROD.value}.",
 )
+arg_path = Arg(
+    "--path",
+    type=Path,
+    default=Path.cwd(),
+    help=(
+        "Path to folder containing the source code for the website. "
+        "For Django & Wagtail, this is the folder with `manage.py`. "
+        "For WordPress, this is the folder with `wp-config.php`. "
+        "Defaults to the current directory."
+    ),
+)
 arg_token = Arg(
     "--token",
     type=str,
@@ -192,7 +203,7 @@ class Command:
                 "An API token is required.\nProvide one with --token, the "
                 "`CR_TOKEN` environment variable, or the `.cr.ini` file."
             )
-        return Webapp(args.webapp, token)
+        return Webapp(args.webapp, token, args.env)
 
     @classmethod
     def run(self, args: argparse.Namespace) -> None:
@@ -210,17 +221,7 @@ class Deploy(Command):
         p.add_argument(*arg_webapp.args, **arg_webapp.kwargs)
         p.add_argument(*arg_env.args, **arg_env.kwargs)
         p.add_argument(*arg_token.args, **arg_token.kwargs)
-        p.add_argument(
-            "--path",
-            type=Path,
-            default=Path.cwd(),
-            help=(
-                "Path to folder containing the source code for the website. "
-                "For Django & Wagtail, this is the folder with `manage.py`. "
-                "For WordPress, this is the folder with `wp-config.php`. "
-                "Defaults to the current directory."
-            ),
-        )
+        p.add_argument(*arg_path.args, **arg_path.kwargs)
         p.add_argument(
             "--no-upload",
             action="store_true",
@@ -257,7 +258,7 @@ class Deploy(Command):
                 t = pbar.add_task("Connecting", total=None)
 
                 # Generate a new SFTP password from CodeRed Cloud API.
-                passwd = w.api_get_sftp_password(args.env)
+                passwd = w.api_get_sftp_password()
 
                 try:
                     # Connect to the webapp's server.
@@ -277,7 +278,7 @@ class Deploy(Command):
 
             # Queue the deployment task.
             t = pbar.add_task("Deploying", total=None)
-            api_task_id = w.api_queue_deploy(args.env)
+            api_task_id = w.api_queue_deploy()
             pbar.print(
                 f"[deployment queued with ID: {api_task_id}]",
                 markup=False,
@@ -303,13 +304,13 @@ class Deploy(Command):
                 markup=False,
                 style="logging.level.info",
             )
-            w.api_poll_logs(args.env, pbar)
+            w.api_poll_logs(pbar)
             pbar.print(
                 "[connection closed]", markup=False, style="logging.level.info"
             )
             pbar.update(t, total=1, completed=1)
 
-        CONSOLE.print(f"\nYour site is live at: {w.url(args.env)}\n")
+        CONSOLE.print(f"\nYour site is live at: {w.url}\n")
 
 
 class Restart(Command):
@@ -330,11 +331,29 @@ class Restart(Command):
     @classmethod
     def run(self, args: argparse.Namespace):
         w = self.get_webapp(args)
-        w.api_queue_restart(args.env)
+        w.api_queue_restart()
         CONSOLE.print(
-            f"Restarting: {w.url(args.env)}\n"
-            "You will receive an email when complete."
+            f"Restarting: {w.url}\n" "You will receive an email when complete."
         )
+
+
+class Check(Command):
+
+    command = "check"
+
+    help = "Check the local project for configuration errors."
+
+    @classmethod
+    def add_args(self, p: argparse.ArgumentParser):
+        p.add_argument(*arg_webapp.args, **arg_webapp.kwargs)
+        p.add_argument(*arg_env.args, **arg_env.kwargs)
+        p.add_argument(*arg_token.args, **arg_token.kwargs)
+        p.add_argument(*arg_path.args, **arg_path.kwargs)
+
+    @classmethod
+    def run(self, args: argparse.Namespace):
+        w = self.get_webapp(args)
+        w.local_check_path(args.path, CONSOLE)
 
 
 class Logs(Command):
@@ -362,7 +381,7 @@ class Logs(Command):
             pbar.print(
                 "[getting logs]", markup=False, style="logging.level.info"
             )
-            w.api_poll_logs(args.env, pbar)
+            w.api_poll_logs(pbar)
             pbar.print(
                 "[connection closed]", markup=False, style="logging.level.info"
             )
@@ -446,7 +465,7 @@ class Download(Command):
             t = pbar.add_task("Connecting", total=None)
 
             # Generate a new SFTP password from CodeRed Cloud API.
-            passwd = w.api_get_sftp_password(args.env)
+            passwd = w.api_get_sftp_password()
 
             try:
                 # Connect to the webapp's server.
@@ -503,8 +522,9 @@ class Upload(Command):
     def run(self, args: argparse.Namespace):
         w = self.get_webapp(args)
 
-        # If the destination is the usual "www" dir, confirm with the user.
-        if args.remote == PurePosixPath("/www"):
+        # If the destination is the usual ``/www`` dir, and ``--path`` is a
+        # directory, confirm with the user.
+        if args.remote == PurePosixPath("/www") and args.path.is_dir():
             w.local_check_path(args.path, CONSOLE)
 
         with Progress(
@@ -530,7 +550,7 @@ class Upload(Command):
             t = pbar.add_task("Connecting", total=None)
 
             # Generate a new SFTP password from CodeRed Cloud API.
-            passwd = w.api_get_sftp_password(args.env)
+            passwd = w.api_get_sftp_password()
 
             try:
                 # Connect to the webapp's server.
@@ -553,6 +573,7 @@ def runcli() -> None:
     """
 
     commands = [
+        Check,
         Deploy,
         Download,
         Logs,
