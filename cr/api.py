@@ -8,9 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
-import enum
 import json
-import re
 import time
 
 from rich.console import Console
@@ -18,41 +16,34 @@ from rich.progress import Progress
 from rich.panel import Panel
 import certifi
 
-from cr import VERSION, DOCS_LINK, LOGGER, USER_AGENT, UserCancelError
-from cr.utils import get_template
-
-
-class AppType(enum.Enum):
-    CODEREDCMS = "coderedcms"
-    DJANGO = "django"
-    HTML = "html"
-    WAGTAIL = "wagtail"
-    WORDPRESS = "wordpress"
-
-    def __str__(self):
-        return self.value
-
-
-class DatabaseType(enum.Enum):
-    MARIADB = "mariadb"
-    POSTGRES = "postgres"
-
-    def __str__(self):
-        return self.value
+from cr import (
+    AppType,
+    ConfigurationError,
+    DOCS_LINK,
+    DatabaseType,
+    Env,
+    LOGGER,
+    USER_AGENT,
+    UserCancelError,
+    VERSION,
+)
+from cr.utils import (
+    django_manage_check,
+    django_requirements_check,
+    django_settings_check,
+    django_settings_fix,
+    django_wsgi_check,
+    django_wsgi_find,
+    html_index_check,
+    wagtail_settings_fix,
+    wordpress_wpconfig_check,
+)
 
 
 class DatabaseServer:
     def __init__(self, hostname: str, db_type: DatabaseType):
         self.hostname: str = hostname
         self.db_type: DatabaseType = db_type
-
-
-class Env(enum.Enum):
-    PROD = "prod"
-    STAGING = "staging"
-
-    def __str__(self):
-        return self.value
 
 
 class Webapp:
@@ -116,16 +107,9 @@ class Webapp:
 
     def local_check_path(self, p: Path, c: Optional[Console]) -> None:
         """
-        Validity check for a provided Path ``p``. If Console ``c`` is provided,
-        ask the user to continue.
-
-        * Checks if ``p`` exists and is a directory.
-
-        * Check that ``p`` appears to contain an AppType project. If Console
-          ``c`` is provided, ask the user to continue.
-
-        * For Django-based projects, check for a correct manage.py, wsgi.py, and
-          settings files.
+        Check that provided Path ``p`` appears to contain a valid AppType
+        project. If Console ``c`` is provided, ask the user for input to
+        resolve any problems.
 
         Raises FileNotFoundError, NotADirectoryError, or UserCancelError.
         """
@@ -134,110 +118,76 @@ class Webapp:
         if not p.is_dir():
             raise NotADirectoryError(f"Expected a directory: `{p}`")
 
-        # Check for app_type's most obvious file in project root.
         if self.app_type in [
             AppType.CODEREDCMS,
             AppType.DJANGO,
             AppType.WAGTAIL,
         ]:
-            project_file = p / "manage.py"
+            self.local_check_django(p, c)
         elif self.app_type == AppType.WORDPRESS:
-            project_file = p / "wp-config.php"
+            self.local_check_wordpress(p, c)
         elif self.app_type == AppType.HTML:
-            project_file = p / "index.html"
-        else:
-            raise Exception(f"Invalid AppType `{self.app_type}`.")
-        project_file_relative = project_file.relative_to(p)
-        if not project_file.is_file():
-            LOGGER.warning(
-                "%s project missing file `%s`.",
-                self.app_type_name,
-                project_file,
-            )
-            if (
-                c
-                and "y"
-                != c.input(
-                    f"Your {self.app_type_name} project is missing a "
-                    f"`{project_file_relative}` file. "
-                    "Without this your app will not deploy correctly. "
-                    r"Continue anyways? [prompt.choices]\[y/N][/] ",
-                ).lower()
-            ):
-                raise UserCancelError()
+            self.local_check_html(p, c)
 
-        # The following checks are only for Django-based projects.
-        if self.app_type not in [
-            AppType.CODEREDCMS,
-            AppType.DJANGO,
-            AppType.WAGTAIL,
-        ]:
-            return
+    def local_check_django(self, p: Path, c: Optional[Console] = None) -> None:
+        """
+        Checks that a Django or Wagtail project contains correct files and
+        structure, and offers to fix files when possible.
+        """
+        # Check ``manage.py`` file.
+        try:
+            django_manage_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
 
         # Check ``requirements.txt`` file.
-        req = p / "requirements.txt"
-        if not req.is_file():
-            LOGGER.warning("requirements.txt file does not exist!")
-            if (
-                c
-                and "y"
-                != c.input(
-                    "Missing `requirements.txt` file. "
-                    "Without this your app will not deploy correctly. "
-                    r"Continue anyways? [prompt.choices]\[y/N][/] ",
-                ).lower()
-            ):
-                raise UserCancelError()
+        try:
+            django_requirements_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
 
         # Check for a ``wsgi.py`` file in the Django project folder.
-        wsgi = p / self.django_project / "wsgi.py"
-        wsgi_relative = wsgi.relative_to(p)
-        if not wsgi.is_file():
-            LOGGER.warning("WSGI file does not exist! %s", wsgi)
-            if c:
-                # Guess what the correct Django project might be.
+        try:
+            django_wsgi_check(p, self.django_project)
+        except FileNotFoundError as err:
+            LOGGER.warning("%s file does not exist!", err)
+            # Guess what the correct Django project might be.
+            try:
+                djp = django_wsgi_find(p)
+            except FileNotFoundError:
                 djp = ""
-                for item in p.iterdir():
-                    if item.is_dir() and (item / "wsgi.py").is_file():
-                        djp = item.name
-                if djp:
-                    answer = c.input(
-                        "Webapp is configured with a Django project named "
-                        f"`{self.django_project}` on CodeRed Cloud, but it looks "
-                        f"like this project is named `{djp}`.\n"
-                        f"[prompt.choices]1[/]) Set Django project on CodeRed Cloud to `{djp}`.\n"
-                        "[prompt.choices]2[/]) Continue anyways.\n"
-                        "[prompt.choices]3[/]) Cancel and quit.\n"
-                        "\n"
-                        r"Choose an option to continue: [prompt.choices]\[1/2/3][/] ",
-                    ).strip()
-                    if answer == "1":
-                        self.api_set_django_project(djp)
-                    elif answer == "2":
-                        pass
-                    else:
-                        raise UserCancelError()
-                elif (
-                    "y"
-                    != c.input(
-                        f"Missing WSGI file `{wsgi_relative}`. "
-                        "Without this your app will not deploy correctly. "
-                        r"Continue anyways? [prompt.choices]\[y/N][/] ",
-                    ).lower()
-                ):
+            if c and djp:
+                answer = c.input(
+                    "Webapp is configured with a Django project named "
+                    f"`{self.django_project}` on CodeRed Cloud, but it looks "
+                    f"like this project is named `{djp}`.\n"
+                    f"[prompt.choices]1[/]) Set Django project on CodeRed Cloud to `{djp}`.\n"
+                    "[prompt.choices]2[/]) Continue anyways.\n"
+                    "[prompt.choices]3[/]) Cancel and quit.\n"
+                    "\n"
+                    r"Choose an option to continue: [prompt.choices](1/2/3)[/] ",
+                ).strip()
+                if answer == "1":
+                    self.api_set_django_project(djp)
+                elif answer == "2":
+                    pass
+                else:
                     raise UserCancelError()
+            elif c:
+                _prompt_filenotfound(err, c)
 
         # Check settings file.
-        settings = p / self.django_project / "settings" / "prod.py"
-        if self.env == Env.STAGING:
-            settings = p / self.django_project / "settings" / "staging.py"
-        settings_relative = settings.relative_to(p)
+        settings = p / self.django_project / "settings" / f"{self.env}.py"
+        settings_rel = settings.relative_to(p)
+        fix_me = False
+        try:
+            django_settings_check(settings)
         # If settings file does not exist, offer to create it.
-        if not settings.is_file():
+        except FileNotFoundError:
             LOGGER.warning("Settings file does not exist! %s", settings)
             if c:
                 answer = c.input(
-                    f"Missing settings file `{settings_relative}`. "
+                    f"Missing settings file `{settings_rel}`. "
                     "Without this your app will not deploy correctly.\n"
                     "[prompt.choices]1[/]) Create recommended settings.\n"
                     "[prompt.choices]2[/]) Continue anyways.\n"
@@ -246,104 +196,41 @@ class Webapp:
                     r"Choose an option to continue: [prompt.choices]\[1/2/3][/] ",
                 ).strip()
                 if answer == "1":
-                    self.local_fix_django_settings(p)
+                    fix_me = True
                 elif answer == "2":
                     pass
                 else:
                     raise UserCancelError()
-        # If settings file is missing some common strings from our recommended
-        # settings, it may be incorrect, so offer to fix it.
-        elif (
-            "VIRTUAL_HOST" not in settings.read_text()
-            or "DB_HOST" not in settings.read_text()
-        ):
-            LOGGER.warning("Settings file may be incorrect. %s", settings)
+        # If settings file is misconfigured, offer to fix it.
+        except ConfigurationError:
+            LOGGER.warning("Settings file may be misconfigured. %s", settings)
             if (
                 c
                 and "y"
                 == c.input(
-                    f"Settings file `{settings_relative}` may be incorrectly "
-                    r"configured. Correct it? [prompt.choices]\[y/N][/] "
+                    f"Settings file `{settings_rel}` may be misconfigured. "
+                    "Correct it? [prompt.choices](y/N)[/] "
                 ).lower()
             ):
-                self.local_fix_django_settings(p)
+                fix_me = True
+        if fix_me:
+            django_settings_fix(settings, self.database.db_type)
+            if self.app_type in [AppType.CODEREDCMS, AppType.WAGTAIL]:
+                wagtail_settings_fix(settings)
 
-    def local_fix_django_settings(self, p: Path) -> None:
-        """
-        Rewrites and/or creates Django settings file at:
-        ``p``/{django_project}/settings/{env}.py
-        """
-        settings = p / self.django_project / "settings.py"
-        settings_dir = p / self.django_project / "settings"
-        settings_base = settings_dir / "base.py"
-        settings_env = settings_dir / "prod.py"
-        if self.env == Env.STAGING:
-            settings_env = settings_dir / "staging.py"
+    def local_check_html(self, p: Path, c: Optional[Console] = None) -> None:
+        try:
+            html_index_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
 
-        # If we don't have a settings.py or a settings/base.py, give up.
-        if not (settings.is_file() or settings_base.is_file()):
-            raise FileNotFoundError(
-                "Could not find a Django settings file. "
-                f"Does the folder contain a Django project named "
-                f"`{self.django_project}`?"
-            )
-
-        # Check for settings.py and convert to settings/base.py.
-        if settings.is_file() and not settings_base.is_file():
-            LOGGER.info("Creating %s", settings_base)
-            # Make settings dir.
-            settings_dir.mkdir(parents=True, exist_ok=True)
-            # Move settings.py to settings/base.py
-            settings.rename(settings_base)
-
-        # Ensure paths are correct in settings/base.py
-        settings_str = settings_base.read_text()
-        # Rewrite BASE_DIR to accurately reflect the location.
-        # Django >=3.1 settings have ``BASE_DIR = Path``
-        settings_str = re.sub(
-            r"^BASE_DIR\s+=\s+Path.+$",
-            r"BASE_DIR = Path(__file__).resolve().parent.parent.parent",
-            settings_str,
-            flags=re.MULTILINE,
-        )
-        # Django <3.1 and Wagtail settings have ``BASE_DIR = os.path``
-        settings_str = re.sub(
-            r"^BASE_DIR\s+=\s+os\..+$",
-            r"from pathlib import Path\n"
-            r"BASE_DIR = Path(__file__).resolve().parent.parent.parent",
-            settings_str,
-            flags=re.MULTILINE,
-        )
-        LOGGER.info("Writing to %s", settings_base)
-        settings_base.write_text(settings_str)
-
-        # Create settings/{env}.py
-        if not settings_env.exists():
-            settings_env.write_text(get_template("settings-top.py.txt"))
-        # If settings/{env}.py does not look correct, append our recommended.
-        settings_str = settings_env.read_text()
-        if not re.findall(
-            r"os\.environ\[\s*[\'\"]VIRTUAL_HOST[\'\"]\s*\]",
-            settings_str,
-        ):
-            settings_str += "\n"
-            settings_str += get_template("settings.py.txt")
-        if not re.findall(
-            r"os\.environ\[\s*[\'\"]DB_HOST[\'\"]\s*\]",
-            settings_str,
-        ):
-            settings_str += "\n"
-            settings_str += get_template(
-                f"settings-{self.database.db_type}.py.txt"
-            )
-        if (
-            self.app_type in [AppType.CODEREDCMS, AppType.WAGTAIL]
-            and "WAGTAILADMIN_BASE_URL" not in settings_str
-        ):
-            settings_str += "\n"
-            settings_str += get_template("settings-wagtail.py.txt")
-        LOGGER.info("Writing to %s", settings_env)
-        settings_env.write_text(settings_str)
+    def local_check_wordpress(
+        self, p: Path, c: Optional[Console] = None
+    ) -> None:
+        try:
+            wordpress_wpconfig_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
 
     def api_set_django_project(self, name: str) -> None:
         """
@@ -606,3 +493,23 @@ def check_update(c: Optional[Console] = None) -> bool:
     except Exception as exc:
         LOGGER.warning("Error checking for update.", exc_info=exc)
     return False
+
+
+def _prompt_filenotfound(
+    err: FileNotFoundError, c: Optional[Console] = None
+) -> None:
+    """
+    If Console ``c`` is provided, ask the user to continue when a file is not
+    found.
+    """
+    LOGGER.warning("%s file does not exist!", err)
+    if (
+        c
+        and "y"
+        != c.input(
+            f"Missing `{err}` file. "
+            "Without this your app will not deploy correctly. "
+            "Continue anyways? [prompt.choices](y/N)[/] ",
+        ).lower()
+    ):
+        raise UserCancelError()
