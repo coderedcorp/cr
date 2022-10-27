@@ -7,7 +7,7 @@ mypy
 pyinstaller==5.6.*
 pytest
 pytest-cov
-setuptools>=61
+setuptools>=65.5
 twine
 types-paramiko
 wheel
