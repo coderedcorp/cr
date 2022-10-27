@@ -12,10 +12,11 @@ python -m venv ./.venv
 (windows) ./.venv/Scripts/Activate.ps1
 ```
 
-Install the package, and developer tools:
+First install the developer tools, then the package in editable mode:
 
 ```console
-$ pip install -r requirements-dev.txt
+$ python -m pip install -r requirements-dev.txt
+$ python -m pip install -e .
 ```
 
 Run the command line tool:

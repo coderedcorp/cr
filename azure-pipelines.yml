@@ -33,8 +33,8 @@ stages:
           architecture: "x64"
 
       - script: |
-          python -m pip install pip --upgrade --upgrade-strategy eager
           python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
         displayName: "CR-QC: Install local package"
 
       - script: cr --help
@@ -68,8 +68,8 @@ stages:
         architecture: "x64"
 
     - script: |
-        python -m pip install pip --upgrade --upgrade-strategy eager
         python -m pip install -r requirements-pipeline.txt
+        python -m pip install -e .
       displayName: "CR-QC: Install"
 
     - script: pytest
@@ -94,8 +94,8 @@ stages:
         architecture: "x64"
 
     - script: |
-        python -m pip install pip --upgrade --upgrade-strategy eager
         python -m pip install -r requirements-pipeline.txt
+        python -m pip install -e .
       displayName: "CR-QC: Install"
 
     - script: pytest
@@ -123,8 +123,8 @@ stages:
         architecture: "x64"
 
     - script: |
-        python -m pip install pip --upgrade --upgrade-strategy eager
         python -m pip install -r requirements-pipeline.txt
+        python -m pip install -e .
       displayName: "CR-QC: Install"
 
     - script: pytest
