@@ -32,7 +32,9 @@ stages:
           versionSpec: '$(PYTHON_VERSION)'
           architecture: "x64"
 
-      - script: python -m pip install -r requirements-dev.txt
+      - script: |
+          python -m pip install pip --upgrade --upgrade-strategy eager
+          python -m pip install -r requirements-dev.txt
         displayName: "CR-QC: Install local package"
 
       - script: cr --help
@@ -65,7 +67,9 @@ stages:
         versionSpec: "3.10"
         architecture: "x64"
 
-    - script: python -m pip install -r requirements-pipeline.txt
+    - script: |
+        python -m pip install pip --upgrade --upgrade-strategy eager
+        python -m pip install -r requirements-pipeline.txt
       displayName: "CR-QC: Install"
 
     - script: pytest
@@ -89,7 +93,9 @@ stages:
         versionSpec: "3.10"
         architecture: "x64"
 
-    - script: python -m pip install -r requirements-pipeline.txt
+    - script: |
+        python -m pip install pip --upgrade --upgrade-strategy eager
+        python -m pip install -r requirements-pipeline.txt
       displayName: "CR-QC: Install"
 
     - script: pytest
@@ -116,7 +122,9 @@ stages:
         versionSpec: "3.10"
         architecture: "x64"
 
-    - script: python -m pip install -r requirements-pipeline.txt
+    - script: |
+        python -m pip install pip --upgrade --upgrade-strategy eager
+        python -m pip install -r requirements-pipeline.txt
       displayName: "CR-QC: Install"
 
     - script: pytest
