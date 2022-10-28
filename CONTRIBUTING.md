@@ -113,6 +113,8 @@ First, convert the certificate + private key into a PFX file:
 openssl pkcs12 -export -in .\CERTIFICATE.crt -inkey .\PRIVATE_KEY.pem -out codered.pfx
 ```
 
+These certificate files are accessible in our private SharePoint.
+
 Next, open the "Developer PowerShell" or "Developer Command Prompt" and sign the binary using the PFX file and its password. When signing, also timestamp it using Sectigo's server.
 
 ```
@@ -123,4 +125,42 @@ The `cr.exe` binary is now signed.
 
 ### macOS
 
-Currently in the process of being verified by Apple.
+Binaries must be signed and notarized by Apple. A caveat to this process is that the PyInstaller build MUST be performed on the mac which has the code signing certificate installed, due to recent requirements by Apple about runtime hardening and signing of collected binaries (i.e. Python libs bundled with the app). See: https://pyinstaller.org/en/latest/feature-notes.html?highlight=hardening#macos-binary-code-signing
+
+The mac must have the FULL Xcode installed (not just the command line tools).
+
+Finally, the CodeRed signing certificate, which was obtained from Apple, must be installed. This is accessible in our private SharePoint. Related Apple developer ID password etc. is available in our private Bitwarden.
+
+The normal command to sign a binary would be (e.g. if we had written this in go or C):
+```
+codesign --sign "Developer ID Application: CodeRed LLC (26334S6DB6)" --timestamp --options runtime ./cr-macos
+```
+
+However due to intracacies of PyInstaller bundling, we must have PyInstaller handle the signing. To build the bundle, run this command on the mac with the certificate and Xcode:
+
+```
+pyinstaller ./cr.spec --codesign-identity "Developer ID Application: CodeRed LLC (26334S6DB6)"
+
+mv ./dist/cr ./dist/cr-macos
+```
+
+How that you have a signed binary, it must be notarized by Apple. First, zip the file, then use `notarytool` to submit the file for notarization. The process takes about a minute.
+
+```
+ditto -c -k ./dist/cr-macos ./dist/cr-macos.zip
+
+xcrun notarytool submit --apple-id BITWARDEN --password BITWARDEN --team-id BITWARDEN --wait ./dist/cr-macos.zip
+```
+
+If the status is anything other than "Accepted", you can see logs by copying the UUID provided in the output, and running this command:
+
+```
+xcrun notarytool log COPIED_ID --apple-id BITWARDEN --password BITWARDEN --team-id BITWARDEN
+```
+
+Upon success, the `./dist/cr-macos` binary is now ready to be uploaded and distributed. Test that the notarization worked by running the binary:
+
+```
+chmod +x ./dist/cr-macos
+./dist/cr-macos --debug
+```
