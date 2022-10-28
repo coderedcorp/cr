@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=65.5"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -57,7 +57,10 @@ addopts = "--cov cr --cov-report html"
 ignore_missing_imports = true
 
 [tool.setuptools]
-packages = ["cr"]
+packages = ["cr", "cr.templates"]
+
+[tool.setuptools.package-data]
+"cr.templates" = ["*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "cr.VERSION"}

@@ -16,6 +16,7 @@
 *.rst text eol=lf
 *.sass text eol=lf
 *.scss text eol=lf
+*.spec text eol=lf
 *.sh text eol=lf
 *.toml text eol=lf
 *.txt text eol=lf

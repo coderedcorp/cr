@@ -1,5 +1,5 @@
 """
-Subprocess and filesystem utilities for cross-platform compatibility.
+Subprocess and filesystem utilities for working with the local project.
 
 Copyright (c) 2022 CodeRed LLC.
 """
@@ -8,13 +8,19 @@ from subprocess import PIPE, Popen
 from typing import IO, List, Tuple, Union
 import io
 import os
+import re
 
-from cr import LOGGER
+from cr import LOGGER, ConfigurationError, DatabaseType
 
 
 EXCLUDE_DIRNAMES = ["__pycache__", "node_modules", "htmlcov", "venv"]
 """
 List of directory names to always exclude from deployments.
+"""
+
+TEMPLATE_PATH = Path(__file__).parent / "templates"
+"""
+Templates directory included with this project.
 """
 
 
@@ -246,3 +252,153 @@ def paths_to_deploy(
                 lp.append(fpr)
 
     return lp
+
+
+def template(t: str) -> str:
+    """
+    Read file ``t`` from the templates directory and return it as a string.
+    """
+    return (TEMPLATE_PATH / t).read_text()
+
+
+def django_manage_check(p: Path) -> None:
+    if not (p / "manage.py").is_file():
+        raise FileNotFoundError("manage.py")
+
+
+def django_requirements_check(p: Path) -> None:
+    if not (p / "requirements.txt").is_file():
+        raise FileNotFoundError("requirements.txt")
+
+
+def django_settings_check(p: Path) -> None:
+    """
+    Given a path to a settings file ``p``, check the contents of the settings file.
+    """
+    if not p.is_file():
+        raise FileNotFoundError(p)
+    contents = p.read_text()
+    if "VIRTUAL_HOST" not in contents or "DB_HOST" not in contents:
+        raise ConfigurationError()
+
+
+def django_settings_fix(p: Path, db: DatabaseType) -> None:
+    """
+    Given a path to a settings file ``p``, create and/or rewrite existing
+    settings in the expected format.
+
+    ``p`` Should be a sanctioned settings path, e.g. project/settings/prod.py
+    """
+    project_dir = p.parent.parent
+    settings = project_dir / "settings.py"
+    settings_dir = project_dir / "settings"
+    settings_base = settings_dir / "base.py"
+
+    # If we don't have a settings.py or a settings/base.py, give up.
+    if not (settings.is_file() or settings_base.is_file()):
+        raise FileNotFoundError(
+            "Could not find any Django settings. "
+            f"Does the folder contain a Django project named "
+            f"`{project_dir.name}`?"
+        )
+
+    # Check for settings.py and convert to settings/base.py.
+    if settings.is_file() and not settings_base.is_file():
+        LOGGER.info("Creating %s", settings_base)
+        # Make settings dir.
+        settings_dir.mkdir(parents=True, exist_ok=True)
+        # Move settings.py to settings/base.py
+        settings.rename(settings_base)
+
+    # Ensure paths are correct in settings/base.py
+    settings_str = settings_base.read_text()
+    # Rewrite BASE_DIR to accurately reflect the location.
+    # Django >=3.1 settings have ``BASE_DIR = Path``
+    settings_str = re.sub(
+        r"^BASE_DIR\s+=\s+Path.+$",
+        r"BASE_DIR = Path(__file__).resolve().parent.parent.parent",
+        settings_str,
+        flags=re.MULTILINE,
+    )
+    # Django <3.1 and Wagtail settings have ``BASE_DIR = os.path``
+    settings_str = re.sub(
+        r"^BASE_DIR\s+=\s+os\..+$",
+        r"from pathlib import Path\n"
+        r"BASE_DIR = Path(__file__).resolve().parent.parent.parent",
+        settings_str,
+        flags=re.MULTILINE,
+    )
+    LOGGER.info("Writing to %s", settings_base)
+    settings_base.write_text(settings_str)
+
+    # Create desired settings file.
+    if not p.exists():
+        p.write_text(template("settings-top.py.txt"))
+
+    # If settings file does not look correct, append our recommended.
+    settings_str = p.read_text()
+    if not re.findall(
+        r"os\.environ\[\s*[\'\"]VIRTUAL_HOST[\'\"]\s*\]",
+        settings_str,
+    ):
+        settings_str += "\n"
+        settings_str += template("settings.py.txt")
+    if not re.findall(
+        r"os\.environ\[\s*[\'\"]DB_HOST[\'\"]\s*\]",
+        settings_str,
+    ):
+        settings_str += "\n"
+        settings_str += template(f"settings-{db}.py.txt")
+    LOGGER.info("Writing to %s", p)
+    p.write_text(settings_str)
+
+
+def django_wsgi_check(p: Path, project: str):
+    """
+    Checks for existence of a wsgi.py file in the project folder.
+    """
+    wsgi = p / project / "wsgi.py"
+    if not wsgi.is_file():
+        wsgi_relative = wsgi.relative_to(p)
+        raise FileNotFoundError(wsgi_relative)
+
+
+def django_wsgi_find(p: Path) -> str:
+    """
+    Find a subdirectory of ``p`` that contains a wsgi.py file.
+    """
+    for item in p.iterdir():
+        if item.is_dir() and (item / "wsgi.py").is_file():
+            return item.name
+    raise FileNotFoundError("wsgi.py")
+
+
+def html_index_check(p: Path) -> None:
+    """
+    Checks for existence of an index.html file.
+    """
+    if not (p / "index.html").is_file():
+        raise FileNotFoundError("index.html")
+
+
+def wagtail_settings_fix(p: Path) -> None:
+    """
+    Given a path to a settings file ``p``, append any Wagtail-specific settings
+    if they are missing.
+    """
+    settings_str = p.read_text()
+    if "WAGTAILADMIN_BASE_URL" not in settings_str:
+        settings_str = p.read_text()
+        settings_str += "\n"
+        settings_str += template("settings-wagtail.py.txt")
+        LOGGER.info("Writing to %s", p)
+        p.write_text(settings_str)
+
+
+def wordpress_wpconfig_check(p: Path) -> None:
+    """
+    Checks for existence of a wp-config.php file.
+    TODO: Inspect the file similar to Django settings functionality.
+    """
+    if not (p / "wp-config.php").is_file():
+        raise FileNotFoundError("wp-config.php")

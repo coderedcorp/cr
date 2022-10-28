@@ -4,7 +4,9 @@ a = Analysis(
     ["cr/cli.py"],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[
+        ("cr/templates", "cr/templates"),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

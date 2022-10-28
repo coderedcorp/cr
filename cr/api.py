@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
-import enum
 import json
 import time
 
@@ -17,26 +16,28 @@ from rich.progress import Progress
 from rich.panel import Panel
 import certifi
 
-from cr import VERSION, DOCS_LINK, LOGGER, USER_AGENT, UserCancelError
-
-
-class AppType(enum.Enum):
-    CODEREDCMS = "coderedcms"
-    DJANGO = "django"
-    HTML = "html"
-    WAGTAIL = "wagtail"
-    WORDPRESS = "wordpress"
-
-    def __str__(self):
-        return self.value
-
-
-class DatabaseType(enum.Enum):
-    MARIADB = "mariadb"
-    POSTGRES = "postgres"
-
-    def __str__(self):
-        return self.value
+from cr import (
+    AppType,
+    ConfigurationError,
+    DOCS_LINK,
+    DatabaseType,
+    Env,
+    LOGGER,
+    USER_AGENT,
+    UserCancelError,
+    VERSION,
+)
+from cr.utils import (
+    django_manage_check,
+    django_requirements_check,
+    django_settings_check,
+    django_settings_fix,
+    django_wsgi_check,
+    django_wsgi_find,
+    html_index_check,
+    wagtail_settings_fix,
+    wordpress_wpconfig_check,
+)
 
 
 class DatabaseServer:
@@ -45,21 +46,13 @@ class DatabaseServer:
         self.db_type: DatabaseType = db_type
 
 
-class Env(enum.Enum):
-    PROD = "prod"
-    STAGING = "staging"
-
-    def __str__(self):
-        return self.value
-
-
 class Webapp:
     """
     Minimal representation of our Webapp model, with API functions for task
     queueing.
     """
 
-    def __init__(self, handle: str, token: str):
+    def __init__(self, handle: str, token: str, env: Env = Env.PROD):
         """
         Loads the webapp info from CodeRed Cloud API.
         """
@@ -67,6 +60,7 @@ class Webapp:
 
         self.handle: str = handle
         self.token: str = token
+        self.env: Env = env
 
         # Populate the object from API response.
         self.id: int = d["id"]
@@ -88,65 +82,169 @@ class Webapp:
                 hostname=dbdict["hostname"],
                 db_type=DatabaseType(dbdict["db_type"]),
             )
+        dbdict = d.get("staging_dbserver")
+        if dbdict:
+            self.staging_dbserver = DatabaseServer(
+                hostname=dbdict["hostname"],
+                db_type=DatabaseType(dbdict["db_type"]),
+            )
 
-    def url(self, env: Env) -> str:
+    @property
+    def url(self) -> str:
         """
         Return the URL of this website based on environment.
         """
-        if env == Env.STAGING:
+        if self.env == Env.STAGING:
             return f"https://{self.handle}.staging.codered.cloud/"
         return self.primary_url
 
+    @property
+    def database(self) -> DatabaseServer:
+        """
+        Return the DatabaseServer based on environment.
+        """
+        return getattr(self, f"{self.env}_dbserver")
+
     def local_check_path(self, p: Path, c: Optional[Console]) -> None:
         """
-        Validity check for a provided Path ``p``. If Console ``c`` is provided,
-        ask the user to continue.
+        Check that provided Path ``p`` appears to contain a valid AppType
+        project. If Console ``c`` is provided, ask the user for input to
+        resolve any problems.
 
-        * Checks if ``p`` exists.
-
-        * If ``p`` is a directory, check that it appears to contain an AppType
-          project. If Console ``c`` is provided, ask the user to continue.
-
-        Raises ``FileNotFoundError`` or ``UserCancelError``.
+        Raises FileNotFoundError, NotADirectoryError, or UserCancelError.
         """
         if not p.exists():
             raise FileNotFoundError(p)
-        if p.is_dir():
-            is_project = False
-            if self.app_type in [
-                AppType.CODEREDCMS,
-                AppType.DJANGO,
-                AppType.WAGTAIL,
-            ]:
-                f = "manage.py"
-            elif self.app_type == AppType.WORDPRESS:
-                f = "wp-config.php"
-            elif self.app_type == AppType.HTML:
-                f = "index.html"
+        if not p.is_dir():
+            raise NotADirectoryError(f"Expected a directory: `{p}`")
 
-            # Check for file.
-            if (p / f).exists():
-                is_project = True
+        if self.app_type in [
+            AppType.CODEREDCMS,
+            AppType.DJANGO,
+            AppType.WAGTAIL,
+        ]:
+            self.local_check_django(p, c)
+        elif self.app_type == AppType.WORDPRESS:
+            self.local_check_wordpress(p, c)
+        elif self.app_type == AppType.HTML:
+            self.local_check_html(p, c)
 
-            # Log or display a warning if file is not found.
-            if not is_project:
-                LOGGER.warning(
-                    "`%s` does not appear to contain a %s project.",
-                    p,
-                    self.app_type_name,
-                )
-                if (
-                    c
-                    and "y"
-                    != c.input(
-                        f"Folder `{p.name}` does not appear to contain a "
-                        f"{self.app_type_name} project. "
-                        r"Continue anyways? [prompt.choices]\[y/N][/] ",
-                    ).lower()
-                ):
+    def local_check_django(self, p: Path, c: Optional[Console] = None) -> None:
+        """
+        Checks that a Django or Wagtail project contains correct files and
+        structure, and offers to fix files when possible.
+        """
+        # Check ``manage.py`` file.
+        try:
+            django_manage_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
+
+        # Check ``requirements.txt`` file.
+        try:
+            django_requirements_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
+
+        # Check for a ``wsgi.py`` file in the Django project folder.
+        try:
+            django_wsgi_check(p, self.django_project)
+        except FileNotFoundError as err:
+            LOGGER.warning("%s file does not exist!", err)
+            # Guess what the correct Django project might be.
+            try:
+                djp = django_wsgi_find(p)
+            except FileNotFoundError:
+                djp = ""
+            if c and djp:
+                answer = c.input(
+                    "Webapp is configured with a Django project named "
+                    f"`{self.django_project}` on CodeRed Cloud, but it looks "
+                    f"like this project is named `{djp}`.\n"
+                    f"[prompt.choices]1[/]) Set Django project on CodeRed Cloud to `{djp}`.\n"
+                    "[prompt.choices]2[/]) Continue anyways.\n"
+                    "[prompt.choices]3[/]) Cancel and quit.\n"
+                    "\n"
+                    r"Choose an option to continue: [prompt.choices](1/2/3)[/] ",
+                ).strip()
+                if answer == "1":
+                    self.api_set_django_project(djp)
+                elif answer == "2":
+                    pass
+                else:
                     raise UserCancelError()
+            elif c:
+                _prompt_filenotfound(err, c)
 
-    def api_get_sftp_password(self, env: Env) -> str:
+        # Check settings file.
+        settings = p / self.django_project / "settings" / f"{self.env}.py"
+        settings_rel = settings.relative_to(p)
+        fix_me = False
+        try:
+            django_settings_check(settings)
+        # If settings file does not exist, offer to create it.
+        except FileNotFoundError:
+            LOGGER.warning("Settings file does not exist! %s", settings)
+            if c:
+                answer = c.input(
+                    f"Missing settings file `{settings_rel}`. "
+                    "Without this your app will not deploy correctly.\n"
+                    "[prompt.choices]1[/]) Create recommended settings.\n"
+                    "[prompt.choices]2[/]) Continue anyways.\n"
+                    "[prompt.choices]3[/]) Cancel and quit.\n"
+                    "\n"
+                    r"Choose an option to continue: [prompt.choices]\[1/2/3][/] ",
+                ).strip()
+                if answer == "1":
+                    fix_me = True
+                elif answer == "2":
+                    pass
+                else:
+                    raise UserCancelError()
+        # If settings file is misconfigured, offer to fix it.
+        except ConfigurationError:
+            LOGGER.warning("Settings file may be misconfigured. %s", settings)
+            if (
+                c
+                and "y"
+                == c.input(
+                    f"Settings file `{settings_rel}` may be misconfigured. "
+                    "Correct it? [prompt.choices](y/N)[/] "
+                ).lower()
+            ):
+                fix_me = True
+        if fix_me:
+            django_settings_fix(settings, self.database.db_type)
+            if self.app_type in [AppType.CODEREDCMS, AppType.WAGTAIL]:
+                wagtail_settings_fix(settings)
+
+    def local_check_html(self, p: Path, c: Optional[Console] = None) -> None:
+        try:
+            html_index_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
+
+    def local_check_wordpress(
+        self, p: Path, c: Optional[Console] = None
+    ) -> None:
+        try:
+            wordpress_wpconfig_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
+
+    def api_set_django_project(self, name: str) -> None:
+        """
+        PATCH the webapp on coderedapi and set the local django_project.
+        """
+        _, d = coderedapi(
+            f"/api/webapps/{self.handle}/",
+            "PATCH",
+            self.token,
+            {"custom_django_project": name},
+        )
+        self.django_project = d["django_project"]
+
+    def api_get_sftp_password(self) -> str:
         """
         Resets and retrieves the tenant's SFTP password for ``env``.
         """
@@ -156,13 +254,12 @@ class Webapp:
             self.token,
             data={
                 "webapp": self.id,
-                "env": env.value,
+                "env": self.env.value,
                 "task_type": "resetpassword",
             },
         )
-        # If the password is returned, it will be in the "returned data" field
-        re_data = d.get("returned_data", {})
 
+        re_data = d.get("returned_data", {})
         if "password" in re_data:
             return re_data["password"]
         if "error" in d:
@@ -173,7 +270,7 @@ class Webapp:
             raise Exception(f"Host Error: {error}")
         raise Exception("SFTP password not available. Please contact support.")
 
-    def api_queue_deploy(self, env: Env) -> int:
+    def api_queue_deploy(self) -> int:
         """
         Queue a deploy task and return the task ID.
         """
@@ -183,7 +280,7 @@ class Webapp:
             self.token,
             data={
                 "webapp": self.id,
-                "env": env.value,
+                "env": self.env.value,
                 "task_type": "init",
             },
         )
@@ -192,7 +289,7 @@ class Webapp:
         LOGGER.info("Task created: %s", d)
         return d["id"]
 
-    def api_queue_restart(self, env: Env) -> int:
+    def api_queue_restart(self) -> int:
         """
         Queue a restart task and return the task ID.
         """
@@ -202,7 +299,7 @@ class Webapp:
             self.token,
             data={
                 "webapp": self.id,
-                "env": env.value,
+                "env": self.env.value,
                 "task_type": "restart",
             },
         )
@@ -211,14 +308,14 @@ class Webapp:
         LOGGER.info("Task created: %s", d)
         return d["id"]
 
-    def api_get_logs(self, env: Env, since: int = 0) -> dict:
+    def api_get_logs(self, since: int = 0) -> dict:
         status, d = coderedapi(
             "/api/tasks/",
             "POST",
             self.token,
             data={
                 "webapp": self.id,
-                "env": env.value,
+                "env": self.env.value,
                 "task_type": "getlog",
                 "query_params": {"since": since},
             },
@@ -227,7 +324,7 @@ class Webapp:
             raise Exception("Error getting deployment log.")
         return d["returned_data"]
 
-    def api_poll_logs(self, env: Env, progress: Progress) -> None:
+    def api_poll_logs(self, progress: Progress) -> None:
         """
         Poll deployment logs until EOT is found, or a fixed amount of time,
         and print to Progress.
@@ -235,7 +332,7 @@ class Webapp:
         kill = False
         since = 0
         for i in range(18):
-            data = self.api_get_logs(env, since=since)
+            data = self.api_get_logs(since=since)
             logs = data["logs"]
             if not logs:
                 kill = True
@@ -396,3 +493,23 @@ def check_update(c: Optional[Console] = None) -> bool:
     except Exception as exc:
         LOGGER.warning("Error checking for update.", exc_info=exc)
     return False
+
+
+def _prompt_filenotfound(
+    err: FileNotFoundError, c: Optional[Console] = None
+) -> None:
+    """
+    If Console ``c`` is provided, ask the user to continue when a file is not
+    found.
+    """
+    LOGGER.warning("%s file does not exist!", err)
+    if (
+        c
+        and "y"
+        != c.input(
+            f"Missing `{err}` file. "
+            "Without this your app will not deploy correctly. "
+            "Continue anyways? [prompt.choices](y/N)[/] ",
+        ).lower()
+    ):
+        raise UserCancelError()
