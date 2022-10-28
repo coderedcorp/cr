@@ -13,7 +13,7 @@ classifiers = [
 dependencies = [
     "certifi",
     "paramiko==2.11.*",
-    "rich==12.5.*",
+    "rich==12.6.*",
 ]
 description = "The official CodeRed Cloud command line tool."
 dynamic = ["version"]
