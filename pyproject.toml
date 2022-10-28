@@ -59,5 +59,8 @@ ignore_missing_imports = true
 [tool.setuptools]
 packages = ["cr", "cr.templates"]
 
+[tool.setuptools.package-data]
+"cr.templates" = ["*"]
+
 [tool.setuptools.dynamic]
 version = {attr = "cr.VERSION"}
