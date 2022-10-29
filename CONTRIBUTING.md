@@ -186,10 +186,10 @@ Convert the private key:
 openssl pkcs12 -nocerts -in macos.key.p12 -out mykey.key.pem
 ```
 
-Generate the `p12` file, without a password. Enter the password to the private key when prompted.
+Generate the `p12` file. This MUST have a password to be imported on the mac. Enter the password to the private key when prompted, and re-use the same password for the outputted key.
 
 ```
-openssl pkcs12 -export -passout "pass:" -in .\macos_developerID_application.cer.pem -inkey .\macos.key.pem -out .\macos_developerID_application.p12
+openssl pkcs12 -export -in .\macos_developerID_application.cer.pem -inkey .\macos.key.pem -out .\macos_developerID_application.p12
 ```
 
 Now upload the `macos_developerID_application.p12` as a secure file in the pipeline library.

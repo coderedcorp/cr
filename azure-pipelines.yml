@@ -136,6 +136,9 @@ stages:
       condition: eq(variables['CR_RELEASE'], 'True')
       inputs:
         certSecureFile: "macos_developerID_application.p12"
+        certPwd: $(CR_APPLE_CERT_PASS)
+      env:
+        CR_APPLE_CERT_PASS: $(CR_APPLE_CERT_PASS)
 
     - script: pyinstaller --clean --dist ./dist/ ./cr.spec
       displayName: "CR-BLD: Build"
