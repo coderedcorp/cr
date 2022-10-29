@@ -103,6 +103,8 @@ stages:
     - pwsh: |
         # Find signtool.
         $signtool = (Get-ChildItem -Recurse -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64" -Include "signtool.exe")[0].FullName
+        Write-Output $signtool
+        Write-Output $(certificate.secureFilePath)
         # Run signtool from path.
         & $signtool sign /f $(certificate.secureFilePath) /fd certHash /td certHash /tr "http://timestamp.sectigo.com" .\dist\cr.exe
       condition: and(succeeded(), eq(variables['CR_RELEASE'], 'True'))
