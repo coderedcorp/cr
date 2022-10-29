@@ -2,7 +2,7 @@
 # codesign_identity for macos.
 import os
 codesign_identity = None
-if os.environ.get("IS_RELEASE", "").lower() == "true":
+if os.environ.get("CR_RELEASE", "").lower() == "true":
    codesign_identity = "Developer ID Application: CodeRed LLC (26334S6DB6)"
 
 block_cipher = None

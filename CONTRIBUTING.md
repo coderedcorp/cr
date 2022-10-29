@@ -137,7 +137,7 @@ The normal command to sign a binary would be (e.g. if we had written this in Go 
 codesign --sign "Developer ID Application: CodeRed LLC (26334S6DB6)" --timestamp --options runtime ./cr-macos
 ```
 
-However due to intracacies of PyInstaller bundling, we must have PyInstaller sign each lib before it is bundled. To build a fully signed bundle, set the `IS_RELEASE=True` environment variable, and run PyInstaller on the mac with the certificate and Xcode installed:
+However due to intracacies of PyInstaller bundling, we must have PyInstaller sign each lib before it is bundled. To build a fully signed bundle, set the `CR_RELEASE=True` environment variable, and run PyInstaller on the mac with the certificate and Xcode installed:
 
 ```
 pyinstaller ./cr.spec

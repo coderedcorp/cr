@@ -96,12 +96,12 @@ stages:
     - task: DownloadSecureFile@1
       displayName: "CR-BLD: Download Certificate"
       name: certificate
-      condition: and(succeeded(), $(IS_RELEASE))
+      condition: and(succeeded(), $(CR_RELEASE))
       inputs:
         secureFile: "codered_codesign.pfx"
 
     - script: signtool sign /f $(certificate.secureFilePath) /fd certHash /td certHash /tr "http://timestamp.sectigo.com" .\dist\cr.exe
-      condition: and(succeeded(), $(IS_RELEASE))
+      condition: and(succeeded(), $(CR_RELEASE))
       displayName: "CR-BLD: Sign"
 
     - publish: $(System.DefaultWorkingDirectory)\dist\cr.exe
@@ -129,7 +129,7 @@ stages:
 
     - task: InstallAppleCertificate@2
       displayName: "CR-BLD: Download certificate"
-      condition: and(succeeded(), $(IS_RELEASE))
+      condition: and(succeeded(), $(CR_RELEASE))
       inputs:
         certSecureFile: "macos_developerID_application.cer"
 
@@ -143,7 +143,7 @@ stages:
 
     - script: xcrun notarytool submit --apple-id $CR_APPLE_ID --password $CR_APPLE_PASS --team-id $CR_APPLE_TEAM --wait ./dist/cr-macos.zip
       displayName: "CR-BLD: Notarize"
-      condition: and(succeeded(), $(IS_RELEASE))
+      condition: and(succeeded(), $(CR_RELEASE))
       env:
         CR_APPLE_ID: $(CR_APPLE_ID)
         CR_APPLE_PASS: $(CR_APPLE_PASS)
