@@ -8,11 +8,15 @@ trigger:
       - refs/tags/*
 
 variables:
-  # Tags starting with "v" are considered a release and should sign
-  # and publish the binaries.
-  CR_RELEASE: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
-  # Main Python version for building distributables.
-  CR_PY_VERSION: "3.10"
+# Tags starting with "v" are considered a release and should sign
+# and publish the binaries.
+- name: CR_RELEASE
+  value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
+# Main Python version for building distributables.
+- name: CR_PY_VERSION
+  value: '3.10'
+# Link the group of Apple passwords from pipeline library.
+- group: 'Apple IDs'
 
 stages:
 - stage: Quality_Control
@@ -101,8 +105,8 @@ stages:
         secureFile: "codered_codesign.pfx"
 
     - pwsh: |
-        # Find signtool.
-        $signtool = (Get-ChildItem -Recurse -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64" -Include "signtool.exe")[0].FullName
+        # Find newest signtool.
+        $signtool = (Get-ChildItem -Recurse -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64" -Include "signtool.exe")[-1].FullName
         Write-Output $signtool
         Write-Output $(certificate.secureFilePath)
         # Run signtool from path.
@@ -139,8 +143,6 @@ stages:
       inputs:
         certSecureFile: "macos_developerID_application.p12"
         certPwd: $(CR_APPLE_CERT_PASS)
-      env:
-        CR_APPLE_CERT_PASS: $(CR_APPLE_CERT_PASS)
 
     - script: pyinstaller --clean --dist ./dist/ ./cr.spec
       displayName: "CR-BLD: Build"
