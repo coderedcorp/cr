@@ -1,7 +1,18 @@
 # See: https://aka.ms/yaml
 
+# Run on main, and on tags.
 trigger:
-- main
+  branches:
+    include:
+      - main
+      - refs/tags/*
+
+variables:
+  # Tags starting with "v" are considered a release and should sign
+  # and publish the binaries.
+  CR_RELEASE: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
+  # Main Python version for building distributables.
+  CR_PY_VERSION: "3.10"
 
 stages:
 - stage: Quality_Control
@@ -33,7 +44,7 @@ stages:
           architecture: "x64"
 
       - script: |
-          python -m pip install -r requirements-dev.txt
+          python -m pip install -r requirements-pipeline.txt
           python -m pip install -e .
         displayName: "CR-QC: Install local package"
 
@@ -49,12 +60,16 @@ stages:
       - script: black --check .
         displayName: "CR-QC: black"
 
+      - script: pytest
+        displayName: "CR-QC: Test"
+
 
 # Run tests and build bundles for each platform.
 - stage: Build_Dist
   displayName: Build Distributables
   dependsOn: Quality_Control
   condition: succeeded('Quality_Control')
+
   jobs:
   - job: windows10
     displayName: Windows 10
@@ -64,7 +79,7 @@ stages:
     - task: UsePythonVersion@0
       displayName: "Use Python version"
       inputs:
-        versionSpec: "3.10"
+        versionSpec: '$(CR_PY_VERSION)'
         architecture: "x64"
 
     - script: |
@@ -75,8 +90,19 @@ stages:
     - script: pytest
       displayName: "CR-QC: Test"
 
-    - script: pyinstaller --clean --dist ./dist/ ./cr.spec
+    - script: pyinstaller --clean --dist .\dist\ .\cr.spec
       displayName: "CR-BLD: Build"
+
+    - task: DownloadSecureFile@1
+      displayName: "CR-BLD: Download Certificate"
+      name: certificate
+      condition: and(succeeded(), $(IS_RELEASE))
+      inputs:
+        secureFile: "codered_codesign.pfx"
+
+    - script: signtool sign /f $(certificate.secureFilePath) /fd certHash /td certHash /tr "http://timestamp.sectigo.com" .\dist\cr.exe
+      condition: and(succeeded(), $(IS_RELEASE))
+      displayName: "CR-BLD: Sign"
 
     - publish: $(System.DefaultWorkingDirectory)\dist\cr.exe
       artifact: cr.exe
@@ -90,7 +116,7 @@ stages:
     - task: UsePythonVersion@0
       displayName: "Use Python version"
       inputs:
-        versionSpec: "3.10"
+        versionSpec: '$(CR_PY_VERSION)'
         architecture: "x64"
 
     - script: |
@@ -101,11 +127,27 @@ stages:
     - script: pytest
       displayName: "CR-QC: Test"
 
+    - task: InstallAppleCertificate@2
+      displayName: "CR-BLD: Download certificate"
+      condition: and(succeeded(), $(IS_RELEASE))
+      inputs:
+        certSecureFile: "macos_developerID_application.cer"
+
     - script: pyinstaller --clean --dist ./dist/ ./cr.spec
       displayName: "CR-BLD: Build"
 
-    - script: mv ./dist/cr ./dist/cr-macos
-      displayName: "CR-BLD: Rename"
+    - script: |
+        mv ./dist/cr ./dist/cr-macos
+        ditto -c -k ./dist/cr-macos ./dist/cr-macos.zip
+      displayName: "CR-BLD: Rename & zip"
+
+    - script: xcrun notarytool submit --apple-id $CR_APPLE_ID --password $CR_APPLE_PASS --team-id $CR_APPLE_TEAM --wait ./dist/cr-macos.zip
+      displayName: "CR-BLD: Notarize"
+      condition: and(succeeded(), $(IS_RELEASE))
+      env:
+        CR_APPLE_ID: $(CR_APPLE_ID)
+        CR_APPLE_PASS: $(CR_APPLE_PASS)
+        CR_APPLE_TEAM: $(CR_APPLE_TEAM)
 
     - publish: $(System.DefaultWorkingDirectory)/dist/cr-macos
       artifact: cr-macos
@@ -119,7 +161,7 @@ stages:
     - task: UsePythonVersion@0
       displayName: "Use Python version"
       inputs:
-        versionSpec: "3.10"
+        versionSpec: '$(CR_PY_VERSION)'
         architecture: "x64"
 
     - script: |

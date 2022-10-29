@@ -1,3 +1,10 @@
+# If this is being run in a release pipeline, sign the executable with
+# codesign_identity for macos.
+import os
+codesign_identity = None
+if os.environ.get("IS_RELEASE", "").lower() == "true":
+   codesign_identity = "Developer ID Application: CodeRed LLC (26334S6DB6)"
+
 block_cipher = None
 
 a = Analysis(
@@ -39,6 +46,6 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
-    codesign_identity=None,
+    codesign_identity=codesign_identity,
     entitlements_file=None,
 )
