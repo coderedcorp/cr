@@ -165,3 +165,31 @@ Upon success, the `./dist/cr-macos` binary is now ready to be uploaded and distr
 chmod +x ./dist/cr-macos
 ./dist/cr-macos --debug
 ```
+
+#### Use in Azure Pipelines
+
+To install the certificate in Azure Pipelines, a special `.p12` file containing the certificate + private key must be created. Follow these steps to generate the files.
+
+1. Export the private key from the mac, name it `macos.key.p12`. This MUST have a password otherwise it breaks OpenSSL.
+
+2. Download the certificate from Apple, it will be named `macos_DeveloperID_application.cer`.
+
+Convert the certificate:
+
+```
+openssl x509 -in macos_DeveloperID_application.cer -inform DER -out macos_DeveloperID_application.cer.pem -outform PEM
+```
+
+Convert the private key:
+
+```
+openssl pkcs12 -nocerts -in macos.key.p12 -out mykey.key.pem
+```
+
+Generate the `p12` file, without a password. Enter the password to the private key when prompted.
+
+```
+openssl pkcs12 -export -passout "pass:" -in .\macos_developerID_application.cer.pem -inkey .\macos.key.pem -out .\macos_developerID_application.p12
+```
+
+Now upload the `macos_developerID_application.p12` as a secure file in the pipeline library.

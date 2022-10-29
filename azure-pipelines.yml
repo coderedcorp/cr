@@ -96,7 +96,7 @@ stages:
     - task: DownloadSecureFile@1
       displayName: "CR-BLD: Download Certificate"
       name: certificate
-      condition: and(succeeded(), variables['CR_RELEASE'])
+      condition: eq(variables['CR_RELEASE'], 'True')
       inputs:
         secureFile: "codered_codesign.pfx"
 
@@ -129,9 +129,9 @@ stages:
 
     - task: InstallAppleCertificate@2
       displayName: "CR-BLD: Download certificate"
-      condition: and(succeeded(), variables['CR_RELEASE'])
+      condition: eq(variables['CR_RELEASE'], 'True')
       inputs:
-        certSecureFile: "macos_developerID_application.cer"
+        certSecureFile: "macos_developerID_application.p12"
 
     - script: pyinstaller --clean --dist ./dist/ ./cr.spec
       displayName: "CR-BLD: Build"
@@ -143,7 +143,7 @@ stages:
 
     - script: xcrun notarytool submit --apple-id $CR_APPLE_ID --password $CR_APPLE_PASS --team-id $CR_APPLE_TEAM --wait ./dist/cr-macos.zip
       displayName: "CR-BLD: Notarize"
-      condition: and(succeeded(), variables['CR_RELEASE'])
+      condition: and(succeeded(), eq(variables['CR_RELEASE'], 'True'))
       env:
         CR_APPLE_ID: $(CR_APPLE_ID)
         CR_APPLE_PASS: $(CR_APPLE_PASS)
