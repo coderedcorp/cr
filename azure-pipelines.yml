@@ -7,17 +7,6 @@ trigger:
       - main
       - refs/tags/*
 
-variables:
-# Tags starting with "v" are considered a release and should sign
-# and publish the binaries.
-- name: CR_RELEASE
-  value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
-# Main Python version for building distributables.
-- name: CR_PY_VERSION
-  value: '3.10'
-# Link the group of Apple passwords from pipeline library.
-- group: 'Apple IDs'
-
 stages:
 - stage: Quality_Control
   displayName: Quality Control
@@ -73,6 +62,16 @@ stages:
   displayName: Build Distributables
   dependsOn: Quality_Control
   condition: succeeded('Quality_Control')
+  variables:
+  # Tags starting with "v" are considered a release and should sign
+  # and publish the binaries.
+  - name: CR_RELEASE
+    value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
+  # Main Python version for building distributables.
+  - name: CR_PY_VERSION
+    value: '3.10'
+  # Link the group of Apple passwords from pipeline library.
+  - group: 'Apple IDs'
 
   jobs:
   - job: windows10

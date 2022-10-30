@@ -1,9 +1,17 @@
+import platform, os
+
+codesign_identity = None
+strip = False
+
 # If this is being run in a release pipeline, sign the executable with
 # codesign_identity for macos.
-import os
-codesign_identity = None
 if os.environ.get("CR_RELEASE", "").lower() == "true":
    codesign_identity = "Developer ID Application: CodeRed LLC (26334S6DB6)"
+
+# Apply symbol table stripping from the executable on Linux,
+# to reduce file size.
+if platform.system() == "Linux":
+   strip = True
 
 block_cipher = None
 
@@ -38,7 +46,7 @@ exe = EXE(
     icon="icon/cr.ico",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=strip,
     upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
