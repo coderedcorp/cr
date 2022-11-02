@@ -1,5 +1,4 @@
 from pathlib import Path
-import sys
 import unittest
 
 from cr.utils import get_command, exec_proc, git_ignored
@@ -7,14 +6,13 @@ from cr.utils import get_command, exec_proc, git_ignored
 
 class TestSubprocesses(unittest.TestCase):
     def test_get_command(self):
-        # Test that "python" resolves to this actual python interpreter.
-        me = Path(sys.executable)
+        # Test that "python" resolves to a real file path.
         py = get_command("python")
-        self.assertEqual(py, me)
+        self.assertTrue(py.is_file())
 
         # Test that a full path to the program also resolves.
-        py = get_command(me)
-        self.assertEqual(py, me)
+        py = get_command(py.resolve())
+        self.assertTrue(py.is_file())
 
         # Test that a broken command raises an exception.
         with self.assertRaises(FileNotFoundError):
