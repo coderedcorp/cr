@@ -29,6 +29,8 @@ stages:
           PYTHON_VERSION: '3.9'
         py310:
           PYTHON_VERSION: '3.10'
+        py311:
+          PYTHON_VERSION: '3.11'
     steps:
       - task: UsePythonVersion@0
         displayName: "Use Python version"
@@ -69,7 +71,7 @@ stages:
     value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
   # Main Python version for building distributables.
   - name: CR_PY_VERSION
-    value: '3.10'
+    value: '3.11'
   # Link the group of Apple passwords from pipeline library.
   - group: 'Apple IDs'
 
