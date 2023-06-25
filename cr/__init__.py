@@ -44,6 +44,7 @@ class AppType(enum.Enum):
 
 class DatabaseType(enum.Enum):
     MARIADB = "mariadb"
+    MYSQL = "mysql"
     POSTGRES = "postgres"
 
     def __str__(self):
