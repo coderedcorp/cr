@@ -23,6 +23,14 @@ TEMPLATE_PATH = Path(__file__).parent / "templates"
 Templates directory included with this project.
 """
 
+URLSAFE_REGEX = re.compile(
+    r"^[a-zA-Z0-9]+[a-zA-Z0-9\-]+[a-zA-Z0-9]+$", flags=re.IGNORECASE
+)
+"""
+Regular expression to determine if a word is usable in DNS/URLs. Letter or
+number + at least one other letter or number or dash + letter or number.
+"""
+
 
 def get_command(program: str) -> Path:
     r"""
@@ -212,7 +220,6 @@ def paths_to_deploy(
     """
     lp: List[Path] = []
     for root, dirs, files in os.walk(r):
-
         # If subdir is excluded, delete it from the list, so ``os`` will not
         # traverse it. Otherwise, append to the list.
         dirs_copy = dirs.copy()
@@ -259,6 +266,20 @@ def template(t: str) -> str:
     Read file ``t`` from the templates directory and return it as a string.
     """
     return (TEMPLATE_PATH / t).read_text()
+
+
+def is_urlsafe(value: str) -> bool:
+    """
+    Determines if value is a valid URL, subdomain, etc.
+    """
+    return bool(URLSAFE_REGEX.match(value))
+
+
+def check_handle(value: str) -> bool:
+    """
+    Check if the provided ``value`` could be a valid webapp handle.
+    """
+    return is_urlsafe(value) and len(value) <= 32
 
 
 def django_manage_check(p: Path) -> None:

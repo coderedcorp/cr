@@ -51,7 +51,7 @@ from cr.rich_utils import (
     osc_reset,
 )
 from cr.ssh import Server
-from cr.utils import git_ignored, paths_to_deploy
+from cr.utils import check_handle, git_ignored, paths_to_deploy
 
 
 class CustomArgumentParser(argparse.ArgumentParser):
@@ -184,6 +184,14 @@ class Command:
         """
         Loads the Webapp and parses common arguments.
         """
+        # First check if the webapp handle could be valid.
+        # If it's not, immediately throw an error.
+        if not check_handle(args.webapp):
+            raise Exception(
+                f"Provided webapp `{args.webapp}` does not appear to be valid."
+                f" Run `cr {self.command} --help` for syntax."
+            )
+
         # Resolve path, if provided.
         extra_configs = []
         if hasattr(args, "path"):
@@ -211,7 +219,6 @@ class Command:
 
 
 class Deploy(Command):
-
     command = "deploy"
 
     help = "Upload the project to CodeRed Cloud and initiate a deployment."
@@ -245,7 +252,6 @@ class Deploy(Command):
             TimeElapsedColumn(),
             console=CONSOLE,
         ) as pbar:
-
             if not args.no_upload:
                 # Get list of paths to copy.
                 exclude = git_ignored(args.path)
@@ -314,7 +320,6 @@ class Deploy(Command):
 
 
 class Restart(Command):
-
     command = "restart"
 
     help = (
@@ -338,7 +343,6 @@ class Restart(Command):
 
 
 class Check(Command):
-
     command = "check"
 
     help = "Check the local project for configuration errors."
@@ -357,7 +361,6 @@ class Check(Command):
 
 
 class Logs(Command):
-
     command = "logs"
 
     help = "Show the latest deployment logs."
@@ -389,7 +392,6 @@ class Logs(Command):
 
 
 class Download(Command):
-
     command = "download"
 
     help = (
@@ -458,7 +460,6 @@ class Download(Command):
             TimeElapsedColumn(),
             console=CONSOLE,
         ) as pbar:
-
             s = Server(getattr(w, f"sftp_{args.env}_domain"), w.handle, "")
 
             # Get credentials and connect.
@@ -483,7 +484,6 @@ class Download(Command):
 
 
 class Upload(Command):
-
     command = "upload"
 
     help = "Upload a file or folder to CodeRed Cloud."
@@ -535,7 +535,6 @@ class Upload(Command):
             TimeElapsedColumn(),
             console=CONSOLE,
         ) as pbar:
-
             # Get list of paths to copy.
             if args.path.is_dir():
                 exclude = git_ignored(args.path)

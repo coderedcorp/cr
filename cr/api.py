@@ -450,14 +450,20 @@ def coderedapi(
     Raises a human-readable exception if the status code is not in ``ok``.
     """
     endpoint = endpoint.lstrip("/")
-    code, d = request_json(
-        f"https://app.codered.cloud/{endpoint}",
-        method=method,
-        headers={
-            "Authorization": f"Token {token}",
-        },
-        data=data,
-    )
+    try:
+        code, d = request_json(
+            f"https://app.codered.cloud/{endpoint}",
+            method=method,
+            headers={
+                "Authorization": f"Token {token}",
+            },
+            data=data,
+        )
+    except Exception:
+        raise Exception(
+            "Error contacting CodeRed API. Please try again shortly."
+        )
+
     # If the code is not within the list of expected status codes, raise an
     # error with the API's error message.
     if ok and code not in ok:
