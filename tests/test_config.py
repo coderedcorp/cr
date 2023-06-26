@@ -1,13 +1,12 @@
-from pathlib import Path, PurePosixPath
 import unittest
+from pathlib import Path
+from pathlib import PurePosixPath
 
-from cr.config import (
-    load_config,
-    config,
-    config_bool,
-    config_path_list,
-    config_pureposixpath_list,
-)
+from cr.config import config
+from cr.config import config_bool
+from cr.config import config_path_list
+from cr.config import config_pureposixpath_list
+from cr.config import load_config
 
 
 TEST_CONFIG = """

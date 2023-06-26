@@ -3,10 +3,12 @@ Loads runtime variables from various config files.
 
 Copyright (c) 2022 CodeRed LLC.
 """
-from pathlib import Path, PurePosixPath
-from typing import List, Optional
 import configparser
 import os
+from pathlib import Path
+from pathlib import PurePosixPath
+from typing import List
+from typing import Optional
 
 from cr import LOGGER
 
@@ -34,7 +36,7 @@ def load_config(lp: List[Path] = []) -> List[str]:
     return read
 
 
-def config(k, w: str = "cr", f: str = None) -> Optional[str]:
+def config(k, w: str = "cr", f: Optional[str] = None) -> Optional[str]:
     """
     Queries the various config files for a key ``k`` in either the default
     section [cr], or overridden in a webapp section ``w`` [``w``].
@@ -66,7 +68,7 @@ def config(k, w: str = "cr", f: str = None) -> Optional[str]:
     return val
 
 
-def config_bool(k, w: str = "cr", f: bool = None) -> Optional[bool]:
+def config_bool(k, w: str = "cr", f: Optional[bool] = None) -> Optional[bool]:
     """
     Queries a config and parses it as a boolean. Acceptable case-insensitive
     values are: on, off, yes, no, true, false, 0, 1

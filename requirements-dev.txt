@@ -1,10 +1,12 @@
-black
+-e .
+black==23.*
 build
 coverage
 flake8
-mypy
+isort
+mypy==1.4.*
 pip>=22.3
-pyinstaller==5.6.*
+pyinstaller==5.13.*
 pytest
 pytest-cov
 setuptools>=65.5

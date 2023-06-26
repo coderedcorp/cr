@@ -3,41 +3,43 @@ Utilities to call CodeRed Cloud API.
 
 Copyright (c) 2022 CodeRed LLC.
 """
-from http.client import HTTPResponse
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
 import json
 import time
+from http.client import HTTPResponse
+from pathlib import Path
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
+from urllib.error import HTTPError
+from urllib.request import Request
+from urllib.request import urlopen
 
-from rich.console import Console
-from rich.progress import Progress
-from rich.panel import Panel
 import certifi
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress
 
-from cr import (
-    AppType,
-    ConfigurationError,
-    DOCS_LINK,
-    DatabaseType,
-    Env,
-    LOGGER,
-    USER_AGENT,
-    UserCancelError,
-    VERSION,
-)
-from cr.utils import (
-    django_manage_check,
-    django_requirements_check,
-    django_settings_check,
-    django_settings_fix,
-    django_wsgi_check,
-    django_wsgi_find,
-    html_index_check,
-    wagtail_settings_fix,
-    wordpress_wpconfig_check,
-)
+from cr import AppType
+from cr import ConfigurationError
+from cr import DatabaseType
+from cr import DOCS_LINK
+from cr import Env
+from cr import LOGGER
+from cr import USER_AGENT
+from cr import UserCancelError
+from cr import VERSION
+from cr.utils import django_manage_check
+from cr.utils import django_requirements_check
+from cr.utils import django_settings_check
+from cr.utils import django_settings_fix
+from cr.utils import django_wsgi_check
+from cr.utils import django_wsgi_find
+from cr.utils import html_index_check
+from cr.utils import wagtail_settings_fix
+from cr.utils import wordpress_wpconfig_check
 
 
 class DatabaseServer:
@@ -401,8 +403,8 @@ def request_json(
     url: str,
     method: str = "GET",
     headers: Dict[str, str] = {},
-    data: dict = None,
-    timeout: int = None,
+    data: Optional[dict] = None,
+    timeout: Optional[int] = None,
 ) -> Tuple[int, dict]:
     """
     Makes an HTTP request and parses the JSON response.
@@ -440,7 +442,7 @@ def coderedapi(
     endpoint: str,
     method: str,
     token: str,
-    data: dict = None,
+    data: Optional[dict] = None,
     ok: List[int] = [200, 201],
 ) -> Tuple[int, Dict[str, Any]]:
     """
