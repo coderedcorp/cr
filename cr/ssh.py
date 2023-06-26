@@ -3,13 +3,16 @@ Utilities for interacting with CodeRed Cloud host servers.
 
 Copyright (c) 2022 CodeRed LLC.
 """
-from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
-from typing import List, Optional
-import stat
 import os
+import stat
+from dataclasses import dataclass
+from pathlib import Path
+from pathlib import PurePosixPath
+from typing import List
+from typing import Optional
 
-from paramiko.client import AutoAddPolicy, SSHClient
+from paramiko.client import AutoAddPolicy
+from paramiko.client import SSHClient
 from paramiko.sftp_client import SFTPClient
 from rich.progress import Progress
 
@@ -80,7 +83,7 @@ class Server:
         lp: List[Path],
         r: Path,
         s: PurePosixPath,
-        progress: Progress = None,
+        progress: Optional[Progress] = None,
     ) -> None:
         """
         Upload a list of paths ``lp``, relative to local root Path ``r`` to
@@ -129,7 +132,7 @@ class Server:
         s: PurePosixPath,
         r: Path,
         e: List[PurePosixPath] = [],
-        progress: Progress = None,
+        progress: Optional[Progress] = None,
     ) -> None:
         """
         Recursively download a Path ``s`` from the server to local directory ``r``.

@@ -1,7 +1,9 @@
-from pathlib import Path
 import unittest
+from pathlib import Path
 
-from cr.utils import get_command, exec_proc, git_ignored
+from cr.utils import exec_proc
+from cr.utils import get_command
+from cr.utils import git_ignored
 
 
 class TestSubprocesses(unittest.TestCase):

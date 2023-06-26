@@ -3,14 +3,21 @@ Subprocess and filesystem utilities for working with the local project.
 
 Copyright (c) 2022 CodeRed LLC.
 """
-from pathlib import Path
-from subprocess import PIPE, Popen
-from typing import IO, List, Tuple, Union
 import io
 import os
 import re
+from pathlib import Path
+from subprocess import PIPE
+from subprocess import Popen
+from typing import IO
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
-from cr import LOGGER, ConfigurationError, DatabaseType
+from cr import ConfigurationError
+from cr import DatabaseType
+from cr import LOGGER
 
 
 EXCLUDE_DIRNAMES = ["__pycache__", "node_modules", "htmlcov", "venv"]
@@ -72,8 +79,8 @@ def get_command(program: str) -> Path:
 
 def exec_proc(
     args: List[str],
-    infile: Path = None,
-    outfile: Path = None,
+    infile: Optional[Path] = None,
+    outfile: Optional[Path] = None,
     outfile_mode: str = "w",
     ok_exit_codes: List[int] = [0],
 ) -> Tuple[int, str, str]:
@@ -161,7 +168,7 @@ def git_branch() -> str:
     return branch
 
 
-def git_ignored(p: Path = None) -> List[Path]:
+def git_ignored(p: Optional[Path] = None) -> List[Path]:
     """
     Returns a list of absolute file and directory paths ignored by git.
     """

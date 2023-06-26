@@ -12,15 +12,15 @@ classifiers = [
 ]
 dependencies = [
     "certifi",
-    "paramiko==2.11.*",
-    "rich==12.6.*",
+    "paramiko==3.2.*",
+    "rich==13.4.*",
 ]
 description = "The official CodeRed Cloud command line tool."
 dynamic = ["version"]
 license = {file = "LICENSE.txt"}
 name = "cr"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 
 [project.scripts]
 cr = "cr.cli:main"
@@ -50,11 +50,20 @@ omit = [
     "venv/*",
 ]
 
-[tool.pytest.ini_options]
-addopts = "--cov cr --cov-report html"
+[tool.isort]
+force_alphabetical_sort_within_sections = true
+force_single_line = true
+lines_after_imports = 2
+lines_between_sections = 1
+line_length = 80
+profile = "black"
+skip_gitignore = true
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "--cov cr --cov-report html"
 
 [tool.setuptools]
 packages = ["cr", "cr.templates"]

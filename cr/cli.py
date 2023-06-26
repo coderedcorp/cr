@@ -22,36 +22,39 @@ only as necessary for the user to know the program is working.
 
 Copyright (c) 2022 CodeRed LLC.
 """
-from pathlib import Path, PurePosixPath
 import argparse
 import logging
 import sys
+from pathlib import Path
+from pathlib import PurePosixPath
 
 from rich.logging import RichHandler
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    TaskProgressColumn,
-    TimeElapsedColumn,
-    TextColumn,
-)
-from cr import VERSION, DOCS_LINK, LOGGER, UserCancelError
-from cr.api import Env, Webapp, check_update
-from cr.config import (
-    config,
-    config_path_list,
-    config_pureposixpath_list,
-    load_config,
-)
-from cr.rich_utils import (
-    CONSOLE,
-    CONSOLE_ERR,
-    Progress,
-    RichArgparseFormatter,
-    osc_reset,
-)
+from rich.progress import BarColumn
+from rich.progress import MofNCompleteColumn
+from rich.progress import TaskProgressColumn
+from rich.progress import TextColumn
+from rich.progress import TimeElapsedColumn
+
+from cr import DOCS_LINK
+from cr import LOGGER
+from cr import UserCancelError
+from cr import VERSION
+from cr.api import check_update
+from cr.api import Env
+from cr.api import Webapp
+from cr.config import config
+from cr.config import config_path_list
+from cr.config import config_pureposixpath_list
+from cr.config import load_config
+from cr.rich_utils import CONSOLE
+from cr.rich_utils import CONSOLE_ERR
+from cr.rich_utils import osc_reset
+from cr.rich_utils import Progress
+from cr.rich_utils import RichArgparseFormatter
 from cr.ssh import Server
-from cr.utils import check_handle, git_ignored, paths_to_deploy
+from cr.utils import check_handle
+from cr.utils import git_ignored
+from cr.utils import paths_to_deploy
 
 
 class CustomArgumentParser(argparse.ArgumentParser):

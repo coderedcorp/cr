@@ -3,10 +3,16 @@ Utilities to format program output with `rich`.
 
 Copyright (c) 2022 CodeRed LLC.
 """
-from typing import Generator, Iterable, List, Optional
 import argparse
+from typing import Generator
+from typing import Iterable
+from typing import List
+from typing import Optional
 
-from rich.console import Console, Group, RenderableType, WINDOWS
+from rich.console import Console
+from rich.console import Group
+from rich.console import RenderableType
+from rich.console import WINDOWS
 from rich.highlighter import RegexHighlighter
 from rich.measure import measure_renderables
 from rich.padding import Padding
@@ -177,15 +183,17 @@ class RichArgparseFormatter(
         width: Optional[int] = None,
     ) -> None:
         super().__init__(prog, indent_increment, max_help_position, width)
-        self._root_section.renderables = []
+        # Add a `renderables` array to store our custom rendering for the
+        # relevant sections.
+        self._root_section.renderables = []  # type: ignore[attr-defined]
 
     @property
     def renderables(self) -> List[RenderableType]:
-        return self._current_section.renderables  # type: ignore[no-any-return]
+        return self._current_section.renderables  # type: ignore[attr-defined]
 
     @property
     def _table(self) -> Table:
-        return self._current_section.table  # type: ignore[no-any-return]
+        return self._current_section.table  # type: ignore[attr-defined]
 
     def _pad(self, renderable: RenderableType) -> Padding:
         return Padding(renderable, pad=(0, 0, 0, self._current_indent))
@@ -225,7 +233,6 @@ class RichArgparseFormatter(
         Override to not double indent subactions.
         """
         if action.help is not argparse.SUPPRESS:
-
             # find all invocations
             get_invocation = self._format_action_invocation
             # Ignore the initial invocation of subparser and get subactions
@@ -251,7 +258,7 @@ class RichArgparseFormatter(
         self,
         usage: Optional[str],
         actions: Iterable[argparse.Action],
-        groups: Iterable[argparse._ArgumentGroup],
+        groups: Iterable[argparse._MutuallyExclusiveGroup],
         prefix: Optional[str] = None,
     ) -> None:
         # Do not pass prefix along... instead format it as a group title.
@@ -316,8 +323,8 @@ class RichArgparseFormatter(
             heading
         )  # sets self._current_section to child section
 
-        self._current_section.renderables = []
-        self._current_section.table = Table(
+        self._current_section.renderables = []  # type: ignore[attr-defined]
+        self._current_section.table = Table(  # type: ignore[attr-defined]
             box=None,
             pad_edge=False,
             show_header=False,
@@ -357,8 +364,11 @@ class RichArgparseFormatter(
         all_items = self._root_section.items
         if len(all_items) == 1:
             func, args = all_items[0]
-            if func == self._format_usage and not args[-1]:
-                return out  # return the program name instead of printing it
+            # If we are currently executing "format_usage()", return the program
+            # name instead of printing it. Otherwise it will print `: cr`
+            # randomly at the top of the usage section.
+            if func == self._format_usage and not list(args)[-1]:
+                return out
 
         renderables = Group(*self.renderables)
 
