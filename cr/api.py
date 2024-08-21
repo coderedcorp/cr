@@ -227,7 +227,9 @@ class Webapp:
         except FileNotFoundError as err:
             _prompt_filenotfound(err, c)
 
-    def local_check_wordpress(self, p: Path, c: Optional[Console] = None) -> None:
+    def local_check_wordpress(
+        self, p: Path, c: Optional[Console] = None
+    ) -> None:
         try:
             wordpress_wpconfig_check(p)
         except FileNotFoundError as err:
@@ -461,7 +463,9 @@ def coderedapi(
             data=data,
         )
     except Exception:
-        raise Exception("Error contacting CodeRed API. Please try again shortly.")
+        raise Exception(
+            "Error contacting CodeRed API. Please try again shortly."
+        )
 
     # If the code is not within the list of expected status codes, raise an
     # error with the API's error message.
@@ -500,7 +504,9 @@ def check_update(c: Optional[Console] = None) -> bool:
     return False
 
 
-def _prompt_filenotfound(err: FileNotFoundError, c: Optional[Console] = None) -> None:
+def _prompt_filenotfound(
+    err: FileNotFoundError, c: Optional[Console] = None
+) -> None:
     """
     If Console ``c`` is provided, ask the user to continue when a file is not
     found.
