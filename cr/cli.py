@@ -20,8 +20,9 @@ enabled. Use logging generously to aid in customer support:
 Printing output should be done through the CONSOLE object. Print minimal output
 only as necessary for the user to know the program is working.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
+
 import argparse
 import logging
 import sys

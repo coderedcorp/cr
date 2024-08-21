@@ -29,20 +29,6 @@ cr = "cr.cli:main"
 Homepage = "https://www.codered.cloud/cli/"
 Source = "https://github.com/coderedcorp/cr"
 
-[tool.black]
-line-length = 80
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.tox
-  | \.venv
-  | _build
-  | build
-)/
-'''
-
 [tool.coverage.run]
 source = ["cr"]
 omit = [
@@ -50,20 +36,22 @@ omit = [
     "venv/*",
 ]
 
-[tool.isort]
-force_alphabetical_sort_within_sections = true
-force_single_line = true
-lines_after_imports = 2
-lines_between_sections = 1
-line_length = 80
-profile = "black"
-skip_gitignore = true
-
 [tool.mypy]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "--cov cr --cov-report html"
+
+[tool.ruff]
+line-length = 80
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+case-sensitive = false
+force-single-line = true
+lines-after-imports = 2
 
 [tool.setuptools]
 packages = ["cr", "cr.templates"]

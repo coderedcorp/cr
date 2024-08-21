@@ -1,8 +1,9 @@
 """
 Utilities to format program output with `rich`.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
+
 import argparse
 from typing import Generator
 from typing import Iterable
@@ -160,7 +161,7 @@ class RichArgparseFormatter(
 
         Author: Ali Hamdan (ali.hamdan.dev@gmail.com).
 
-        Copyright (C) 2022.
+        Copyright (C) 2022-2024.
 
         Permission is granted to use, copy, and modify this code in any manner as
         long as this copyright message and disclaimer remain in the source code.
@@ -168,7 +169,7 @@ class RichArgparseFormatter(
 
     Modifications and changes:
 
-        Copyright (c) 2022 CodeRed LLC.
+        Copyright (c) 2022-2024 CodeRed LLC.
     """
 
     @staticmethod

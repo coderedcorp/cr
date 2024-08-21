@@ -1,8 +1,9 @@
 """
 Subprocess and filesystem utilities for working with the local project.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
+
 import io
 import os
 import re

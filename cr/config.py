@@ -1,8 +1,9 @@
 """
 Loads runtime variables from various config files.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
+
 import configparser
 import os
 from pathlib import Path

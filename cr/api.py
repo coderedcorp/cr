@@ -1,7 +1,7 @@
 """
 Utilities to call CodeRed Cloud API.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
 
 import json

@@ -42,17 +42,14 @@ stages:
       - script: cr --help
         displayName: "CR-QC: Run CLI"
 
-      - script: flake8 .
-        displayName: "CR-QC: flake8"
+      - script: ruff check .
+        displayName: "CR-QC: ruff check"
+
+      - script: ruff format --check .
+        displayName: "CR-QC: ruff format"
 
       - script: mypy .
         displayName: "CR-QC: mypy"
-
-      - script: black --check .
-        displayName: "CR-QC: black"
-
-      - script: isort --check .
-        displayName: "CR-QC: isort"
 
       - script: pytest
         displayName: "CR-QC: Test"
