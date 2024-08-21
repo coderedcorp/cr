@@ -3,6 +3,7 @@ Utilities to call CodeRed Cloud API.
 
 Copyright (c) 2022 CodeRed LLC.
 """
+
 import json
 import time
 from http.client import HTTPResponse
@@ -319,7 +320,7 @@ class Webapp:
                 "webapp": self.id,
                 "env": self.env.value,
                 "task_type": "getlog",
-                "query_params": {"since": since},
+                "agent_args": {"since": since},
             },
         )
         if status >= 400:
