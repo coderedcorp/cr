@@ -16,9 +16,9 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+from cr import LOGGER
 from cr import ConfigurationError
 from cr import DatabaseType
-from cr import LOGGER
 
 
 EXCLUDE_DIRNAMES = ["__pycache__", "node_modules", "htmlcov", "venv"]

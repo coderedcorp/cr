@@ -10,10 +10,10 @@ from typing import Iterable
 from typing import List
 from typing import Optional
 
+from rich.console import WINDOWS
 from rich.console import Console
 from rich.console import Group
 from rich.console import RenderableType
-from rich.console import WINDOWS
 from rich.highlighter import RegexHighlighter
 from rich.measure import measure_renderables
 from rich.padding import Padding

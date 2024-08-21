@@ -23,15 +23,15 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress
 
+from cr import DOCS_LINK
+from cr import LOGGER
+from cr import USER_AGENT
+from cr import VERSION
 from cr import AppType
 from cr import ConfigurationError
 from cr import DatabaseType
-from cr import DOCS_LINK
 from cr import Env
-from cr import LOGGER
-from cr import USER_AGENT
 from cr import UserCancelError
-from cr import VERSION
 from cr.utils import django_manage_check
 from cr.utils import django_requirements_check
 from cr.utils import django_settings_check
