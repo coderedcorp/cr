@@ -104,7 +104,7 @@ Certificate was purchased from: https://SignMyCode.com (issued by Sectigo). Go h
 
 ### Windows
 
-To sign the PyInstaller binaries on Windows, make sure the Windows SDK is installed (i.e. install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022-2024) then select "Desktop Development with C++"). This is required to get [signtool](https://learn.microsoft.com/en-us/dotnet/framework/tools/signtool-exe)
+To sign the PyInstaller binaries on Windows, make sure the Windows SDK is installed (i.e. install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) then select "Desktop Development with C++"). This is required to get [signtool](https://learn.microsoft.com/en-us/dotnet/framework/tools/signtool-exe)
 
 First, convert the certificate + private key into a PFX file (with no password):
 

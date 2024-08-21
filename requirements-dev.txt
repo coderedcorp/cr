@@ -1,9 +1,9 @@
 -e .
 build
 coverage
-mypy==1.4.*
+mypy==1.11.*
 pip>=22.3
-pyinstaller==5.13.*
+pyinstaller==6.10.*
 pytest
 pytest-cov
 ruff
