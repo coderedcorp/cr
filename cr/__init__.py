@@ -15,6 +15,34 @@ LOGGER = logging.getLogger("cr")
 USER_AGENT = f"CodeRed-CLI/{VERSION} ({DOCS_LINK})"
 
 
+PROD_BRANCHES = [
+    "live",
+    "main",
+    "master",
+    "prod",
+    "production",
+    "release",
+]
+
+
+STAGING_BRANCHES = [
+    "dev",
+    "develop",
+    "development",
+    "gold",
+    "pre-prod",
+    "pre-production",
+    "pre-release",
+    "preprod",
+    "preproduction",
+    "prerelease",
+    "stage",
+    "staging",
+    "test",
+    "testing",
+]
+
+
 class ConfigurationError(Exception):
     """
     Raised when project does not match expected configuration.

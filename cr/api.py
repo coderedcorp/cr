@@ -19,12 +19,13 @@ from urllib.request import Request
 from urllib.request import urlopen
 
 import certifi
-from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress
 
 from cr import DOCS_LINK
 from cr import LOGGER
+from cr import PROD_BRANCHES
+from cr import STAGING_BRANCHES
 from cr import USER_AGENT
 from cr import VERSION
 from cr import AppType
@@ -32,12 +33,18 @@ from cr import ConfigurationError
 from cr import DatabaseType
 from cr import Env
 from cr import UserCancelError
+from cr.rich_utils import Console
 from cr.utils import django_manage_check
 from cr.utils import django_requirements_check
+from cr.utils import django_run_check
+from cr.utils import django_run_migratecheck
 from cr.utils import django_settings_check
 from cr.utils import django_settings_fix
 from cr.utils import django_wsgi_check
 from cr.utils import django_wsgi_find
+from cr.utils import git_branch
+from cr.utils import git_uncommitted
+from cr.utils import git_unpushed
 from cr.utils import html_index_check
 from cr.utils import wagtail_settings_fix
 from cr.utils import wordpress_wpconfig_check
@@ -108,7 +115,7 @@ class Webapp:
         """
         return getattr(self, f"{self.env}_dbserver")
 
-    def local_check_path(self, p: Path, c: Optional[Console]) -> None:
+    def local_check(self, p: Path, c: Optional[Console]) -> None:
         """
         Check that provided Path ``p`` appears to contain a valid AppType
         project. If Console ``c`` is provided, ask the user for input to
@@ -207,13 +214,10 @@ class Webapp:
         # If settings file is misconfigured, offer to fix it.
         except ConfigurationError:
             LOGGER.warning("Settings file may be misconfigured. %s", settings)
-            if (
-                c
-                and "y"
-                == c.input(
-                    f"Settings file `{settings_rel}` may be misconfigured. "
-                    "Correct it? [prompt.choices](y/N)[/] "
-                ).lower()
+            if c and c.prompt_yn(
+                f"Settings file `{settings_rel}` may be misconfigured. "
+                "Correct it?",
+                nouser=False,
             ):
                 fix_me = True
         if fix_me:
@@ -234,6 +238,105 @@ class Webapp:
             wordpress_wpconfig_check(p)
         except FileNotFoundError as err:
             _prompt_filenotfound(err, c)
+
+    def local_predeploy(self, p: Path, c: Optional[Console]) -> None:
+        """
+        Runs various common checks before a deployment, to help prevent the
+        user from creating a broken deployment or deviating from the recommended
+        development process.
+        """
+
+        # Check git branch.
+        b = git_branch()
+        if b and self.env == Env.STAGING and b not in STAGING_BRANCHES:
+            if c and not c.prompt_yn(
+                f"Your are deploying to STAGING from the `{b}` branch!\n"
+                "It is recommended to deploy from a dedicated staging branch.\n"
+                "Continue anyways?",
+                nouser=True,
+            ):
+                raise UserCancelError()
+        if b and self.env == Env.PROD and b not in PROD_BRANCHES:
+            if c and not c.prompt_yn(
+                f"Your are deploying to PROD from the `{b}` branch!\n"
+                "It is recommended to deploy from a dedicated production branch.\n"
+                "Continue anyways?",
+                nouser=True,
+            ):
+                raise UserCancelError()
+
+        # Check for un-commited changes.
+        if git_uncommitted():
+            if c and not c.prompt_yn(
+                "You have changes which are NOT COMMITTED to git!\n"
+                "It is recommended to commit and push your changes before deploying.\n"
+                "Continue anyways?",
+                nouser=True,
+            ):
+                raise UserCancelError()
+
+        # Check for un-pushed.
+        if git_unpushed():
+            if c and not c.prompt_yn(
+                "You have changes which are NOT PUSHED to git!\n"
+                "It is recommended to push your changes before deploying.\n"
+                "Continue anyways?",
+                nouser=True,
+            ):
+                raise UserCancelError()
+
+        if self.app_type in [
+            AppType.CODEREDCMS,
+            AppType.DJANGO,
+            AppType.WAGTAIL,
+        ]:
+            self.local_predeploy_django(p, c)
+
+    def local_predeploy_django(self, p: Path, c: Optional[Console]) -> None:
+        """
+        Runs Django-specific checks before a deployment, to help prevent the
+        user from creating a broken deployment.
+        """
+        if c:
+            c.print("Checking Django project for potential problems...", end="")
+        try:
+            ok, output = django_run_check(p)
+        except FileNotFoundError:
+            ok = False
+            output = "Could not find python on this system."
+        if c and ok:
+            c.print(" [cr.success]OK[/]")
+        if c and not ok:
+            c.print(" [cr.fail]FAIL[/]")
+            if not c.prompt_yn(
+                "Django check returned the following errors:\n\n"
+                f"{output}\n\n"
+                "TIP: be sure to activate your virtual environment and install requirements.txt.\n"
+                "Continue anyways?",
+                nouser=True,
+            ):
+                raise UserCancelError()
+
+        # Check migrations.
+        if c:
+            c.print("Checking for missing migrations...", end="")
+        try:
+            ok, output = django_run_migratecheck(p)
+        except FileNotFoundError:
+            ok = False
+            output = "Could not find python on this system."
+        if c and ok:
+            c.print(" [cr.success]OK[/]")
+        if c and not ok:
+            c.print(" [cr.fail]FAIL[/]")
+            if not c.prompt_yn(
+                f"\n{output}\n\n"
+                "TIP: did you forget to run `manage.py makemigrations`?\n"
+                "TIP: be sure to activate your virtual environment and install requirements.txt.\n"
+                "Continue anyways?",
+                nouser=True,
+            ):
+                raise UserCancelError()
 
     def api_set_django_project(self, name: str) -> None:
         """
@@ -512,13 +615,10 @@ def _prompt_filenotfound(
     found.
     """
     LOGGER.warning("%s file does not exist!", err)
-    if (
-        c
-        and "y"
-        != c.input(
-            f"Missing `{err}` file. "
-            "Without this your app will not deploy correctly. "
-            "Continue anyways? [prompt.choices](y/N)[/] ",
-        ).lower()
+    if c and not c.prompt_yn(
+        f"Missing `{err}` file.\n"
+        "Without this your app will not deploy correctly. "
+        "Continue anyways?",
+        nouser=False,
     ):
         raise UserCancelError()

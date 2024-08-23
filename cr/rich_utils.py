@@ -11,7 +11,7 @@ from typing import List
 from typing import Optional
 
 from rich.console import WINDOWS
-from rich.console import Console
+from rich.console import Console as _Console
 from rich.console import Group
 from rich.console import RenderableType
 from rich.highlighter import RegexHighlighter
@@ -45,6 +45,8 @@ RICH_THEME = Theme(
         "cr.argparse_text": "default",
         "cr.code": "bright_magenta",
         "cr.progress_print": "bright_black",
+        "cr.success": "bright_green",
+        "cr.fail": "bright_red",
         "cr.update_border": "bright_black",
     }
 )
@@ -62,6 +64,31 @@ class CustomHighlighter(RegexHighlighter):
         # Highlight text in backticks as cr.code
         r"`(?P<code>[^`]*)`",
     ]
+
+
+class Console(_Console):
+    """
+    Adds extra functionality for custom prompt behavior.
+    """
+
+    def prompt_yn(self, message: str, nouser: bool) -> bool:
+        """
+        Prompts the user with Yes/No. If user enters Yes, return True.
+        Otherwise, return False.
+
+        If the prompt occurs within a headless terminal (i.e. in a CI/CD
+        pipeline), always return the value of ``nouser``.
+        """
+        if self.is_interactive:
+            val = self.input(message + " [prompt.choices](y/N)[/] ")
+            return val.strip().lower() == "y"
+        else:
+            self.print(message + " [prompt.choices](yes/no)[/] ")
+            if nouser:
+                self.print("  (Continuing without user input)")
+            else:
+                self.print("  (Not continuting without user input)")
+            return nouser
 
 
 CONSOLE = Console(highlighter=CustomHighlighter(), theme=RICH_THEME)

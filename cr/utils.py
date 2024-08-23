@@ -1,6 +1,9 @@
 """
 Subprocess and filesystem utilities for working with the local project.
 
+NOTE: For any git functionality here, it should fail gracefully if git is not
+installed, or the project is not in a git repository.
+
 Copyright (c) 2022-2024 CodeRed LLC.
 """
 
@@ -47,7 +50,7 @@ def get_command(program: str) -> Path:
     ``git`` might return ``C:\Program Files\Git\bin\git.exe``
 
     :param str program:
-        The program to search for. Must be an exectable, not a shell built-in.
+        The program to search for. Must be an executable, not a shell built-in.
 
     :raise FileNotFoundError: if the program cannot be found on the PATH.
 
@@ -156,17 +159,75 @@ def exec_proc(
             LOGGER.debug("Closing `%s`.", outfile)
             stdout.close()
 
-    return (proc.returncode, com_stdout, com_stderr)
+    return (
+        proc.returncode,
+        com_stdout.strip(" \r\n"),
+        com_stderr.strip(" \r\n"),
+    )
+
+
+def stdout_to_list(stdout: str) -> List[str]:
+    """
+    Cleans and splits newline delimited stdout to a list.
+    """
+    stdout_list = []
+    clean = stdout.strip(" \r\n")
+    if clean:
+        stdout_list = clean.split("\n")
+    return stdout_list
 
 
 def git_branch() -> str:
     """
     Returns current git branch.
+    If git exits with an error, or is not on the path, return empty string.
     """
-    _, out, err = exec_proc(["git", "branch", "--show-current"])
-    branch = out.strip("\r\n")
-    LOGGER.debug("Git branch `%s`.", branch)
-    return branch
+    try:
+        code, out, err = exec_proc(["git", "branch", "--show-current"])
+        if code != 0:
+            return ""
+        LOGGER.debug("Git branch `%s`.", out)
+        return out
+    except FileNotFoundError:
+        return ""
+
+
+def git_uncommitted() -> List[str]:
+    """
+    Checks for un-committed changes.
+    Returns list of changed file names, or empty list if no changes.
+    """
+    try:
+        code, out, err = exec_proc(["git", "diff", "--name-only", "HEAD"])
+        if code != 0:
+            return []
+        diff_list = stdout_to_list(out)
+        return diff_list
+    except FileNotFoundError:
+        return []
+
+
+def git_unpushed() -> List[str]:
+    """
+    Checks for un-pushed changes.
+    Returns list of changed file names, or empty list if no changes.
+    """
+    # Get current branch.
+    b = git_branch()
+    if not b:
+        return []
+
+    # Check for changes against the remote branch.
+    try:
+        code, out, err = exec_proc(
+            ["git", "diff", "--name-only", f"origin/{b}"],
+        )
+        if code != 0:
+            return []
+        diff_list = stdout_to_list(out)
+        return diff_list
+    except FileNotFoundError:
+        return []
 
 
 def git_ignored(p: Optional[Path] = None) -> List[Path]:
@@ -190,7 +251,7 @@ def git_ignored(p: Optional[Path] = None) -> List[Path]:
         return lp
 
     # Split stdout by newline.
-    ls = out.strip("\r\n").split("\n")
+    ls = stdout_to_list(out)
 
     # Convert each entry to a Path.
     for s in ls:
@@ -198,16 +259,6 @@ def git_ignored(p: Optional[Path] = None) -> List[Path]:
     LOGGER.debug("Git ignored: `%s`.", lp)
 
     return lp
-
-
-def git_tag() -> str:
-    """
-    Finds the current git tag.
-    """
-    _, out, err = exec_proc(["git", "describe", "--tags"])
-    tag = out.strip("\r\n")
-    LOGGER.debug("Git tag `%s`.", tag)
-    return tag
 
 
 def paths_to_deploy(
@@ -290,12 +341,40 @@ def check_handle(value: str) -> bool:
     return is_urlsafe(value) and len(value) <= 32
 
 
+def django_run_check(p: Path) -> Tuple[bool, str]:
+    """
+    Runs ``manage.py check``.
+
+    Returns a Tuple of success, and program output.
+    """
+    code, out, err = exec_proc(["python", (p / "manage.py"), "check"])
+    return (code == 0, out + err)
+
+
+def django_run_migratecheck(p: Path) -> Tuple[bool, str]:
+    """
+    Runs ``manage.py makemigrations --check``.
+
+    Returns a Tuple of success, and program output.
+    """
+    code, out, err = exec_proc(
+        ["python", (p / "manage.py"), "makemigrations", "--check"]
+    )
+    return (code == 0, out + err)
+
+
 def django_manage_check(p: Path) -> None:
+    """
+    Checks for existence of manage.py file.
+    """
     if not (p / "manage.py").is_file():
         raise FileNotFoundError("manage.py")
 
 
 def django_requirements_check(p: Path) -> None:
+    """
+    Checks for existence of requirements.txt file.
+    """
     if not (p / "requirements.txt").is_file():
         raise FileNotFoundError("requirements.txt")
 
