@@ -347,7 +347,7 @@ def django_run_check(p: Path) -> Tuple[bool, str]:
 
     Returns a Tuple of success, and program output.
     """
-    code, out, err = exec_proc(["python", (p / "manage.py"), "check"])
+    code, out, err = exec_proc(["python", str(p / "manage.py"), "check"])
     return (code == 0, out + err)
 
 
@@ -358,7 +358,7 @@ def django_run_migratecheck(p: Path) -> Tuple[bool, str]:
     Returns a Tuple of success, and program output.
     """
     code, out, err = exec_proc(
-        ["python", (p / "manage.py"), "makemigrations", "--check"]
+        ["python", str(p / "manage.py"), "makemigrations", "--check"]
     )
     return (code == 0, out + err)
 
