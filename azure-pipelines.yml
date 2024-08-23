@@ -21,14 +21,14 @@ stages:
       vmImage: "ubuntu-latest"
     strategy:
       matrix:
-        py38:
-          PYTHON_VERSION: '3.8'
         py39:
           PYTHON_VERSION: '3.9'
         py310:
           PYTHON_VERSION: '3.10'
         py311:
           PYTHON_VERSION: '3.11'
+        py312:
+          PYTHON_VERSION: '3.12'
     steps:
       - task: UsePythonVersion@0
         displayName: "Use Python version"
@@ -42,17 +42,14 @@ stages:
       - script: cr --help
         displayName: "CR-QC: Run CLI"
 
-      - script: flake8 .
-        displayName: "CR-QC: flake8"
+      - script: ruff check .
+        displayName: "CR-QC: ruff check"
+
+      - script: ruff format --check .
+        displayName: "CR-QC: ruff format"
 
       - script: mypy .
         displayName: "CR-QC: mypy"
-
-      - script: black --check .
-        displayName: "CR-QC: black"
-
-      - script: isort --check .
-        displayName: "CR-QC: isort"
 
       - script: pytest
         displayName: "CR-QC: Test"
@@ -70,7 +67,7 @@ stages:
     value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
   # Main Python version for building distributables.
   - name: CR_PY_VERSION
-    value: '3.11'
+    value: '3.12'
   # Link the group of Apple passwords from pipeline library.
   - group: 'Apple IDs'
 
@@ -116,9 +113,9 @@ stages:
       artifact: cr.exe
 
   - job: macos11
-    displayName: macOS 11
+    displayName: macOS 12
     pool:
-      vmImage: "macOS-11"
+      vmImage: "macOS-12"
 
     steps:
     - task: UsePythonVersion@0
@@ -129,7 +126,6 @@ stages:
 
     - script: python -m pip install -r requirements-pipeline.txt
       displayName: "CR-QC: Install"
-
     - script: pytest
       displayName: "CR-QC: Test"
 

@@ -28,9 +28,8 @@ $ cr --help
 During development, lint your code with:
 
 ```console
-$ flake8 .
-$ mypy .
-$ black .
+$ ruff format .
+$ ruff check --fix .
 ```
 
 Tests should be written in `tests/test_{name}.py` where name is the source file in `cr/` it is testing.

@@ -1,18 +1,19 @@
 """
 Utilities to format program output with `rich`.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
+
 import argparse
 from typing import Generator
 from typing import Iterable
 from typing import List
 from typing import Optional
 
+from rich.console import WINDOWS
 from rich.console import Console
 from rich.console import Group
 from rich.console import RenderableType
-from rich.console import WINDOWS
 from rich.highlighter import RegexHighlighter
 from rich.measure import measure_renderables
 from rich.padding import Padding
@@ -160,7 +161,7 @@ class RichArgparseFormatter(
 
         Author: Ali Hamdan (ali.hamdan.dev@gmail.com).
 
-        Copyright (C) 2022.
+        Copyright (C) 2022-2024.
 
         Permission is granted to use, copy, and modify this code in any manner as
         long as this copyright message and disclaimer remain in the source code.
@@ -168,7 +169,7 @@ class RichArgparseFormatter(
 
     Modifications and changes:
 
-        Copyright (c) 2022 CodeRed LLC.
+        Copyright (c) 2022-2024 CodeRed LLC.
     """
 
     @staticmethod

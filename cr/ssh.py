@@ -1,8 +1,9 @@
 """
 Utilities for interacting with CodeRed Cloud host servers.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
+
 import os
 import stat
 from dataclasses import dataclass

@@ -1,8 +1,9 @@
 """
 Subprocess and filesystem utilities for working with the local project.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
+
 import io
 import os
 import re
@@ -15,9 +16,9 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+from cr import LOGGER
 from cr import ConfigurationError
 from cr import DatabaseType
-from cr import LOGGER
 
 
 EXCLUDE_DIRNAMES = ["__pycache__", "node_modules", "htmlcov", "venv"]

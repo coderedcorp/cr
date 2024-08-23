@@ -20,8 +20,9 @@ enabled. Use logging generously to aid in customer support:
 Printing output should be done through the CONSOLE object. Print minimal output
 only as necessary for the user to know the program is working.
 
-Copyright (c) 2022 CodeRed LLC.
+Copyright (c) 2022-2024 CodeRed LLC.
 """
+
 import argparse
 import logging
 import sys
@@ -37,20 +38,20 @@ from rich.progress import TimeElapsedColumn
 
 from cr import DOCS_LINK
 from cr import LOGGER
-from cr import UserCancelError
 from cr import VERSION
-from cr.api import check_update
+from cr import UserCancelError
 from cr.api import Env
 from cr.api import Webapp
+from cr.api import check_update
 from cr.config import config
 from cr.config import config_path_list
 from cr.config import config_pureposixpath_list
 from cr.config import load_config
 from cr.rich_utils import CONSOLE
 from cr.rich_utils import CONSOLE_ERR
-from cr.rich_utils import osc_reset
 from cr.rich_utils import Progress
 from cr.rich_utils import RichArgparseFormatter
+from cr.rich_utils import osc_reset
 from cr.ssh import Server
 from cr.utils import check_handle
 from cr.utils import git_ignored
