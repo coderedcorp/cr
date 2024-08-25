@@ -250,7 +250,7 @@ class Webapp:
         b = git_branch()
         if b and self.env == Env.STAGING and b not in STAGING_BRANCHES:
             if c and not c.prompt_yn(
-                f"Your are deploying to STAGING from the `{b}` branch!\n"
+                f"You are deploying to STAGING from the `{b}` branch!\n"
                 "It is recommended to deploy from a dedicated staging branch.\n"
                 "Continue anyways?",
                 nouser=True,
@@ -258,7 +258,7 @@ class Webapp:
                 raise UserCancelError()
         if b and self.env == Env.PROD and b not in PROD_BRANCHES:
             if c and not c.prompt_yn(
-                f"Your are deploying to PROD from the `{b}` branch!\n"
+                f"You are deploying to PROD from the `{b}` branch!\n"
                 "It is recommended to deploy from a dedicated production branch.\n"
                 "Continue anyways?",
                 nouser=True,
