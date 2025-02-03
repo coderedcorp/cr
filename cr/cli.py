@@ -342,7 +342,7 @@ class Restart(Command):
         w = self.get_webapp(args)
         w.api_queue_restart()
         CONSOLE.print(
-            f"Restarting: {w.url}\n" "You will receive an email when complete."
+            f"Restarting: {w.url}\nYou will receive an email when complete."
         )
 
 

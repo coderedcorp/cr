@@ -5,6 +5,7 @@ Copyright (c) 2022-2024 CodeRed LLC.
 """
 
 import json
+import ssl
 import time
 from http.client import HTTPResponse
 from pathlib import Path
@@ -425,8 +426,10 @@ def request_json(
         req.data = bytes(json.dumps(data), encoding="utf8")
 
     # Open the request and read the response.
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.load_verify_locations(cafile=certifi.where())
     try:
-        r = urlopen(req, timeout=timeout, cafile=certifi.where())
+        r = urlopen(req, timeout=timeout, context=context)
         d = _response_to_json(r)
         code = r.code
         LOGGER.info("%s %s %d", method, url, code)
@@ -479,10 +482,12 @@ def coderedapi(
     return (code, d)
 
 
-def check_update(c: Optional[Console] = None) -> bool:
+def check_update(c: Optional[Console] = None) -> Tuple[bool, Optional[str]]:
     """
     Check if a new version is available and print to Console ``c``.
     If this fails or takes longer than 1 second, simply ignore it.
+
+    Returns tuple of (bool, new version string).
     """
     try:
         _, gh = request_json(
@@ -498,10 +503,11 @@ def check_update(c: Optional[Console] = None) -> bool:
                     border_style="cr.update_border",
                 )
                 c.print(p)
-            return True
+            return (True, newver)
+        return (False, newver)
     except Exception as exc:
         LOGGER.warning("Error checking for update.", exc_info=exc)
-    return False
+    return (False, None)
 
 
 def _prompt_filenotfound(
