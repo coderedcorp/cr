@@ -115,9 +115,9 @@ stages:
       artifact: cr.exe
 
   - job: macos
-    displayName: macOS 12
+    displayName: macOS 13
     pool:
-      vmImage: "macOS-12"
+      vmImage: "macOS-13"
 
     steps:
     - task: UsePythonVersion@0
