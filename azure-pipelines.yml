@@ -29,6 +29,8 @@ stages:
           PYTHON_VERSION: '3.11'
         py312:
           PYTHON_VERSION: '3.12'
+        py313:
+          PYTHON_VERSION: '3.13'
     steps:
       - task: UsePythonVersion@0
         displayName: "Use Python version"
@@ -67,12 +69,12 @@ stages:
     value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
   # Main Python version for building distributables.
   - name: CR_PY_VERSION
-    value: '3.12'
+    value: '3.13'
   # Link the group of Apple passwords from pipeline library.
   - group: 'Apple IDs'
 
   jobs:
-  - job: windows10
+  - job: windows
     displayName: Windows 10
     pool:
       vmImage: "windows-2019"
@@ -112,10 +114,10 @@ stages:
     - publish: $(System.DefaultWorkingDirectory)\dist\cr.exe
       artifact: cr.exe
 
-  - job: macos11
-    displayName: macOS 12
+  - job: macos
+    displayName: macOS 13
     pool:
-      vmImage: "macOS-12"
+      vmImage: "macOS-13"
 
     steps:
     - task: UsePythonVersion@0
@@ -155,7 +157,7 @@ stages:
     - publish: $(System.DefaultWorkingDirectory)/dist/cr-macos
       artifact: cr-macos
 
-  - job: ubuntu2004
+  - job: ubuntu
     displayName: Ubuntu 20.04
     pool:
       vmImage: "ubuntu-20.04"
