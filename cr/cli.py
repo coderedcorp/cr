@@ -241,12 +241,22 @@ class Deploy(Command):
                 "Re-deploys the website version already on CodeRed Cloud."
             ),
         )
+        p.add_argument(
+            "--skip-predeploy",
+            action="store_true",
+            help=(
+                "Skip common pre-deployment checks. "
+                "Only checks for local configuration errors."
+            ),
+        )
 
     @classmethod
     def run(self, args: argparse.Namespace):
         w = self.get_webapp(args)
         if not args.no_upload:
-            w.local_check_path(args.path, CONSOLE)
+            w.local_check(args.path, CONSOLE)
+            if not args.skip_predeploy:
+                w.local_predeploy(args.path, CONSOLE)
 
         with Progress(
             TextColumn("[progress.description]{task.description}"),
@@ -357,11 +367,21 @@ class Check(Command):
         p.add_argument(*arg_env.args, **arg_env.kwargs)
         p.add_argument(*arg_token.args, **arg_token.kwargs)
         p.add_argument(*arg_path.args, **arg_path.kwargs)
+        p.add_argument(
+            "--skip-predeploy",
+            action="store_true",
+            help=(
+                "Skip common pre-deployment checks. "
+                "Only checks for local configuration errors."
+            ),
+        )
 
     @classmethod
     def run(self, args: argparse.Namespace):
         w = self.get_webapp(args)
-        w.local_check_path(args.path, CONSOLE)
+        w.local_check(args.path, CONSOLE)
+        if not args.skip_predeploy:
+            w.local_predeploy(args.path, CONSOLE)
 
 
 class Logs(Command):
@@ -521,6 +541,14 @@ class Upload(Command):
                 "Defaults to `/www` which is the main directory."
             ),
         )
+        p.add_argument(
+            "--skip-predeploy",
+            action="store_true",
+            help=(
+                "Skip common pre-deployment checks. "
+                "Only checks for local configuration errors."
+            ),
+        )
 
     @classmethod
     def run(self, args: argparse.Namespace):
@@ -529,7 +557,9 @@ class Upload(Command):
         # If the destination is the usual ``/www`` dir, and ``--path`` is a
         # directory, confirm with the user.
         if args.remote == PurePosixPath("/www") and args.path.is_dir():
-            w.local_check_path(args.path, CONSOLE)
+            w.local_check(args.path, CONSOLE)
+            if not args.skip_predeploy:
+                w.local_predeploy(args.path, CONSOLE)
 
         with Progress(
             TextColumn("[progress.description]{task.description}"),
