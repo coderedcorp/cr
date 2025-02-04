@@ -457,7 +457,7 @@ class Webapp:
                 )
                 if "\x04" in text:
                     kill = True
-                time.sleep(0.1)
+                time.sleep(0.05)
             if kill:
                 break
             time.sleep(10)
