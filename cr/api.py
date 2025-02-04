@@ -478,7 +478,8 @@ class Webapp:
 
     def api_poll_task(self, task_id: int) -> dict:
         """
-        Blocking function to poll a task every 10 seconds until it completes or errors out.
+        Blocking function to poll a task every 10
+        seconds until it completes or errors out.
 
         Returns the completed or errored task dict.
 
