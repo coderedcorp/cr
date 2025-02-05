@@ -51,6 +51,7 @@ from cr.rich_utils import CONSOLE
 from cr.rich_utils import CONSOLE_ERR
 from cr.rich_utils import Progress
 from cr.rich_utils import RichArgparseFormatter
+from cr.rich_utils import SphinxArgparseFormatter
 from cr.rich_utils import osc_reset
 from cr.ssh import Server
 from cr.utils import check_handle
@@ -65,9 +66,8 @@ class CustomArgumentParser(argparse.ArgumentParser):
 
     def __init__(self, *args, **kwargs):
         """
-        Override to always use the rich formatter.
+        Override various titles.
         """
-        kwargs["formatter_class"] = RichArgparseFormatter
         super().__init__(*args, **kwargs)
         self._optionals.title = "Options"
         self._positionals.title = "Required"
@@ -123,8 +123,29 @@ class CustomArgumentParser(argparse.ArgumentParser):
         Override to show a more friendly help message.
         """
         CONSOLE.print(f"{self.prog}: {message}")
-        CONSOLE.print(f"See `{self.prog} --help`.")
+        CONSOLE.print(f"See ``{self.prog} --help``.")
         self.exit(2)
+
+
+class RichArgumentParser(CustomArgumentParser):
+    """
+    Override to use the rich formatter.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs["formatter_class"] = RichArgparseFormatter
+        super().__init__(*args, **kwargs)
+
+
+class SphinxArgumentParser(CustomArgumentParser):
+    """
+    Tweak the output to play nice with reStructuredText formatting when used
+    with ``sphinx-argparse``.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs["formatter_class"] = SphinxArgparseFormatter
+        super().__init__(*args, **kwargs)
 
 
 class Arg:
@@ -150,8 +171,8 @@ arg_path = Arg(
     default=Path.cwd(),
     help=(
         "Path to folder containing the source code for the website. "
-        "For Django & Wagtail, this is the folder with `manage.py`. "
-        "For WordPress, this is the folder with `wp-config.php`. "
+        "For Django & Wagtail, this is the folder with ``manage.py``. "
+        "For WordPress, this is the folder with ``wp-config.php``. "
         "Defaults to the current directory."
     ),
 )
@@ -160,7 +181,7 @@ arg_token = Arg(
     type=str,
     help=(
         "API token which has access to webapp. "
-        "If not provided, uses the `CR_TOKEN` environment variable."
+        "If not provided, uses the ``CR_TOKEN`` environment variable."
     ),
 )
 arg_webapp = Arg(
@@ -192,8 +213,8 @@ class Command:
         # If it's not, immediately throw an error.
         if not check_handle(args.webapp):
             raise Exception(
-                f"Provided webapp `{args.webapp}` does not appear to be valid."
-                f" Run `cr {self.command} --help` for syntax."
+                f"Provided webapp ``{args.webapp}`` does not appear to be valid."
+                f" Run ``cr {self.command} --help`` for syntax."
             )
 
         # Resolve path, if provided.
@@ -213,7 +234,7 @@ class Command:
         if not token:
             raise Exception(
                 "An API token is required.\nProvide one with --token, the "
-                "`CR_TOKEN` environment variable, or the `.cr.ini` file."
+                "``CR_TOKEN`` environment variable, or the ``.cr.ini`` file."
             )
         return Webapp(args.webapp, token, args.env)
 
@@ -445,7 +466,7 @@ class Download(Command):
             help=(
                 "Remote directory or file on the CodeRed Cloud server to "
                 "recursively download. "
-                "Defaults to `/www` which is the main directory."
+                "Defaults to ``/www`` which is the main directory."
             ),
         )
         p.add_argument(
@@ -454,9 +475,9 @@ class Download(Command):
             nargs="*",
             default=[],
             help=(
-                "List of directories (relative to --remote) to exclude from "
-                "download. "
-                "Defaults to `cache` `static` `wp-content/cache`."
+                "Space separated list of directories (relative to --remote) "
+                "to exclude from download. "
+                "Defaults to ``--exclude cache static wp-content/cache``."
             ),
         )
 
@@ -527,7 +548,7 @@ class Upload(Command):
                 "If this is a folder, its contents will be recursively "
                 "uploaded into --remote. "
                 "To upload your full website, this should be the folder "
-                "containing `manage.py` or `wp-config.php`. "
+                "containing ``manage.py`` or ``wp-config.php``. "
                 "Defaults to the current directory."
             ),
         )
@@ -538,7 +559,7 @@ class Upload(Command):
             help=(
                 "Remote directory on the CodeRed Cloud server in which to upload "
                 "the file or folder. "
-                "Defaults to `/www` which is the main directory."
+                "Defaults to ``/www`` which is the main directory."
             ),
         )
         p.add_argument(
@@ -600,22 +621,28 @@ class Upload(Command):
                 s.close()
 
 
-def runcli() -> None:
-    """
-    Entrypoint into the command-line interface.
-    """
+COMMANDS = [
+    Check,
+    Deploy,
+    Download,
+    Logs,
+    Restart,
+    Upload,
+]
 
-    commands = [
-        Check,
-        Deploy,
-        Download,
-        Logs,
-        Restart,
-        Upload,
-    ]
+
+def make_parser(klass=SphinxArgumentParser) -> argparse.ArgumentParser:
+    """
+    Sets up argparse with all the subcommands and options.
+
+    This is in a separate function for compatibility with generating docs using
+    ``sphinx-argparse``. For that reason, we are also defaulting to the non-rich
+    SphinxArgumentParser because the sphinx-docs are unaware of rich's meta
+    formatting codes.
+    """
 
     # Common global args.
-    globalparser = CustomArgumentParser(
+    globalparser = klass(
         add_help=False,
     )
     globalargs = globalparser.add_argument_group("Global Options")
@@ -632,7 +659,7 @@ def runcli() -> None:
     )
 
     # The main parser.
-    parser = CustomArgumentParser(
+    parser = klass(
         prog="cr",
         description="CodeRed Cloud command line tool.",
         add_help=False,
@@ -652,9 +679,7 @@ def runcli() -> None:
         title="Commands",
         dest="command",
     )
-    commands_map = {}
-    for c in commands:
-        commands_map[c.command] = c
+    for c in COMMANDS:
         sp = subparsers.add_parser(
             name=c.command,
             description=c.help,
@@ -664,8 +689,21 @@ def runcli() -> None:
         )
         c.add_args(sp)
 
+    return parser
+
+
+def runcli() -> None:
+    """
+    Entrypoint into the command-line interface.
+    """
+
     # -- Parse and route the commands ------------------------------------------
 
+    commands_map = {}
+    for c in COMMANDS:
+        commands_map[c.command] = c
+
+    parser = make_parser(klass=RichArgumentParser)
     args = parser.parse_args()
 
     # Set up logging.
