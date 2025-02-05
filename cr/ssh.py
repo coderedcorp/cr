@@ -58,6 +58,7 @@ class Server:
             port=22,
             username=self.user,
             password=self.passwd,
+            allow_agent=False,
             look_for_keys=False,
         )
         self._client = c
