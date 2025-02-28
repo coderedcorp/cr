@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -51,10 +52,15 @@ from cr.utils import wagtail_settings_fix
 from cr.utils import wordpress_wpconfig_check
 
 
-class DatabaseServer:
-    def __init__(self, hostname: str, db_type: DatabaseType):
-        self.hostname: str = hostname
-        self.db_type: DatabaseType = db_type
+class DatabaseServer(NamedTuple):
+    hostname: str
+    db_type: DatabaseType
+
+
+class WebServer(NamedTuple):
+    hostname: str
+    internet_gateway: str
+    public_ip4: str
 
 
 class Webapp:
@@ -81,12 +87,16 @@ class Webapp:
         self.container_img_using: str = d.get("container_img_using", "")
         self.databases: List[str] = d["databases"]
         self.django_project: str = d["django_project"]
+        self.feature_ssh: bool = d.get("feature_ssh", False)
         self.name: str = d["name"]
         self.primary_domain: str = d["primary_domain"]
         self.primary_url: str = d["primary_url"]
         self.prod_dbserver: Optional[DatabaseServer] = None
+        self.prod_server: Optional[WebServer] = None
         self.sftp_prod_domain: str = d["sftp_prod_domain"]
         self.sftp_staging_domain: str = d["sftp_staging_domain"]
+        self.staging_dbserver: Optional[DatabaseServer] = None
+        self.staging_server: Optional[WebServer] = None
         dbdict = d.get("prod_dbserver")
         if dbdict:
             self.prod_dbserver = DatabaseServer(
@@ -98,6 +108,20 @@ class Webapp:
             self.staging_dbserver = DatabaseServer(
                 hostname=dbdict["hostname"],
                 db_type=DatabaseType(dbdict["db_type"]),
+            )
+        serverdict = d.get("prod_server")
+        if serverdict:
+            self.prod_server = WebServer(
+                hostname=serverdict["hostname"],
+                internet_gateway=serverdict["internet_gateway"],
+                public_ip4=serverdict["public_ip4"],
+            )
+        serverdict = d.get("staging_server")
+        if serverdict:
+            self.staging_server = WebServer(
+                hostname=serverdict["hostname"],
+                internet_gateway=serverdict["internet_gateway"],
+                public_ip4=serverdict["public_ip4"],
             )
 
     @property
