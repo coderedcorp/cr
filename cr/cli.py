@@ -37,6 +37,7 @@ from rich.progress import SpinnerColumn
 from rich.progress import TaskProgressColumn
 from rich.progress import TextColumn
 from rich.progress import TimeElapsedColumn
+from rich.table import Table
 
 from cr import DOCS_LINK
 from cr import LOGGER
@@ -46,9 +47,11 @@ from cr.api import Env
 from cr.api import Webapp
 from cr.api import check_update
 from cr.config import config
+from cr.config import config_has_key
 from cr.config import config_path_list
 from cr.config import config_pureposixpath_list
 from cr.config import load_config
+from cr.config import write_token
 from cr.rich_utils import CONSOLE
 from cr.rich_utils import CONSOLE_ERR
 from cr.rich_utils import Progress
@@ -182,7 +185,7 @@ arg_token = Arg(
     "--token",
     type=str,
     help=(
-        "API token which has access to webapp. "
+        "API key which has access to webapp. "
         "If not provided, uses the ``CR_TOKEN`` environment variable."
     ),
 )
@@ -219,6 +222,16 @@ class Command:
                 f" Run ``cr {self.command} --help`` for syntax."
             )
 
+        # Get token.
+        token = self.get_token(args)
+        return Webapp(args.webapp, token, args.env)
+
+    @classmethod
+    def get_token(self, args: argparse.Namespace) -> str:
+        """
+        Gets the token from various sources such as the command line,
+        environment variables, or config.
+        """
         # Resolve path, if provided.
         extra_configs = []
         if hasattr(args, "path"):
@@ -232,17 +245,97 @@ class Command:
         # Get token.
         token = args.token
         if not token:
-            token = config("token", args.webapp)
+            if hasattr(args, "webapp"):
+                token = config("token", args.webapp)
+            else:
+                token = config("token")
         if not token:
             raise Exception(
-                "An API token is required.\nProvide one with --token, the "
+                "An API key is required.\nProvide one with --token, the "
                 "``CR_TOKEN`` environment variable, or the ``.cr.ini`` file."
             )
-        return Webapp(args.webapp, token, args.env)
+        return token
 
     @classmethod
     def run(self, args: argparse.Namespace) -> None:
         pass
+
+
+class Login(Command):
+    command = "login"
+
+    help = "Interactively set up your first API key."
+
+    @classmethod
+    def run(self, args: argparse.Namespace):
+        # Check if a config file exists, and contains a token.
+        load_config()
+        section, is_env = config_has_key("token")
+        if section and is_env:
+            CONSOLE.print(
+                "API key is already in environment variable ``{section}``. "
+                "Additional keys can be set in your ``~/.cr.ini`` file.\n"
+                "See: https://www.codered.cloud/docs/cli/config/"
+            )
+        elif section:
+            CONSOLE.print(
+                "An API key is already set in a ``.cr.ini`` file. "
+                "Additional keys can be added by editing the file.\n"
+                "See: https://www.codered.cloud/docs/cli/config/"
+            )
+        else:
+            # Prompt user to create an API token, and write it to file.
+            CONSOLE.print(
+                "No CodeRed Cloud API key found.\n"
+                "Create one here, then enter it below.\n"
+                "\n"
+                "    https://app.codered.cloud/billing/api-key/\n"
+            )
+            token = CONSOLE.input("[prompt.choices]Enter key:[/] ")
+            token = token.strip()
+            path = write_token(token)
+            CONSOLE.print(f"Saved to: {path}")
+
+
+class List(Command):
+    command = "list"
+
+    help = (
+        "List the websites on your account. "
+        "If you have multiple clients, you'll need to specify "
+        "a ``--token`` which has access to each client."
+    )
+
+    @classmethod
+    def add_args(self, p: argparse.ArgumentParser):
+        p.add_argument(*arg_token.args, **arg_token.kwargs)
+
+    @classmethod
+    def run(self, args: argparse.Namespace):
+        # Check if a config file exists, and contains a token.
+        token = self.get_token(args)
+        webapps = []
+        client = None
+        # Load list of webapps and client info.
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            SpinnerColumn(),
+            console=CONSOLE,
+            transient=True,
+        ) as pbar:
+            t = pbar.add_task("Fetching list of websites", total=None)
+            webapps = Webapp.all(token)
+            client = webapps[0].client
+            pbar.update(t, total=1, completed=1)
+        # Print info.
+        table = Table(box=None, pad_edge=False)
+        table.add_column("Handle", no_wrap=True)
+        table.add_column("Name")
+        table.add_column("URL")
+        for w in webapps:
+            table.add_row(w.handle, w.name, w.url)
+        CONSOLE.print(f"Websites owned by: {client.name}\n")
+        CONSOLE.print(table)
 
 
 class Deploy(Command):
@@ -738,6 +831,8 @@ COMMANDS = [
     Check,
     Deploy,
     Download,
+    List,
+    Login,
     Logs,
     Restart,
     Sftp,
