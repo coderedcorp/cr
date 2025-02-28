@@ -30,8 +30,10 @@ from pathlib import Path
 from pathlib import PurePosixPath
 
 from rich.logging import RichHandler
+from rich.panel import Panel
 from rich.progress import BarColumn
 from rich.progress import MofNCompleteColumn
+from rich.progress import SpinnerColumn
 from rich.progress import TaskProgressColumn
 from rich.progress import TextColumn
 from rich.progress import TimeElapsedColumn
@@ -528,6 +530,117 @@ class Download(Command):
                 s.close()
 
 
+class Sftp(Command):
+    command = "sftp"
+
+    help = "Generate SFTP credentials."
+
+    @classmethod
+    def add_args(self, p: argparse.ArgumentParser):
+        p.add_argument(*arg_webapp.args, **arg_webapp.kwargs)
+        p.add_argument(*arg_env.args, **arg_env.kwargs)
+        p.add_argument(*arg_token.args, **arg_token.kwargs)
+
+    @classmethod
+    def run(self, args: argparse.Namespace):
+        w = self.get_webapp(args)
+        if args.env == Env.STAGING and not w.staging_server:
+            raise Exception(
+                f"'{w.handle}' does not have a staging server. "
+                "Create a staging site in the dashboard or upgrade your plan."
+            )
+        if args.env == Env.PROD and not w.prod_server:
+            raise Exception(
+                f"'{w.handle}' has not been deployed. "
+                "Deploy the site first, or contact support."
+            )
+        host = getattr(w, f"sftp_{args.env}_domain")
+        port = 22
+        user = w.handle
+        passwd = ""
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            SpinnerColumn(),
+            console=CONSOLE,
+            transient=True,
+        ) as pbar:
+            # Generate a new SFTP password from CodeRed Cloud API.
+            t = pbar.add_task("Generating system credentials", total=None)
+            passwd = w.api_get_sftp_password()
+            pbar.update(t, total=1, completed=1)
+        CONSOLE.print(
+            f"SFTP host:       {host}\n"
+            f"SFTP port:       {port}\n"
+            f"SFTP user:       {user}\n"
+            f"System password: {passwd}"
+        )
+        p = Panel(
+            "[logging.level.warning]NOTE:[/] "
+            "Passwords are temporary and may be reset every time your "
+            "website is deployed.\n"
+            "Docs: https://www.codered.cloud/guides/sftp/",
+            border_style="cr.update_border",
+        )
+        CONSOLE_ERR.print(p)
+
+
+class Ssh(Command):
+    command = "ssh"
+
+    help = "Generate SSH credentials."
+
+    @classmethod
+    def add_args(self, p: argparse.ArgumentParser):
+        p.add_argument(*arg_webapp.args, **arg_webapp.kwargs)
+        p.add_argument(*arg_env.args, **arg_env.kwargs)
+        p.add_argument(*arg_token.args, **arg_token.kwargs)
+
+    @classmethod
+    def run(self, args: argparse.Namespace):
+        w = self.get_webapp(args)
+        if not w.feature_ssh:
+            raise Exception(
+                f"'{w.handle}' does not have SSH enabled. "
+                "Upgrade your plan to enable SSH access."
+            )
+        if args.env == Env.STAGING and not w.staging_server:
+            raise Exception(
+                f"'{w.handle}' does not have a staging server. "
+                "Create a staging site in the dashboard or upgrade your plan."
+            )
+        if args.env == Env.PROD and not w.prod_server:
+            raise Exception(
+                f"'{w.handle}' has not been deployed. "
+                "Deploy the site first, or contact support."
+            )
+        host = getattr(w, f"sftp_{args.env}_domain")
+        port = 2222
+        user = w.handle
+        passwd = ""
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            SpinnerColumn(),
+            console=CONSOLE,
+            transient=True,
+        ) as pbar:
+            # Generate a new SFTP password from CodeRed Cloud API.
+            t = pbar.add_task("Generating system credentials", total=None)
+            passwd = w.api_get_sftp_password()
+            pbar.update(t, total=1, completed=1)
+        CONSOLE.print(
+            f"SSH command:     ssh -p {port} {user}@{host}\n"
+            f"System password: {passwd}"
+        )
+        p = Panel(
+            "[logging.level.warning]NOTE:[/] "
+            "Passwords are temporary and may be reset every time your "
+            "website is deployed.\n"
+            "See SSH limitations: https://www.codered.cloud/guides/ssh/",
+            border_style="cr.update_border",
+        )
+        CONSOLE_ERR.print(p)
+
+
 class Upload(Command):
     command = "upload"
 
@@ -627,6 +740,8 @@ COMMANDS = [
     Download,
     Logs,
     Restart,
+    Sftp,
+    Ssh,
     Upload,
 ]
 
