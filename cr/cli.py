@@ -533,7 +533,7 @@ class Download(Command):
 class Sftp(Command):
     command = "sftp"
 
-    help = "Generate SFTP credentials."
+    help = "Show SFTP credentials and reset system password."
 
     @classmethod
     def add_args(self, p: argparse.ArgumentParser):
@@ -565,7 +565,7 @@ class Sftp(Command):
             transient=True,
         ) as pbar:
             # Generate a new SFTP password from CodeRed Cloud API.
-            t = pbar.add_task("Generating system credentials", total=None)
+            t = pbar.add_task("Resetting system password", total=None)
             passwd = w.api_get_sftp_password()
             pbar.update(t, total=1, completed=1)
         CONSOLE.print(
@@ -578,7 +578,7 @@ class Sftp(Command):
             "[logging.level.warning]NOTE:[/] "
             "Passwords are temporary and may be reset every time your "
             "website is deployed.\n"
-            "Docs: https://www.codered.cloud/guides/sftp/",
+            "SFTP guide: https://www.codered.cloud/guides/sftp/",
             border_style="cr.update_border",
         )
         CONSOLE_ERR.print(p)
@@ -587,7 +587,7 @@ class Sftp(Command):
 class Ssh(Command):
     command = "ssh"
 
-    help = "Generate SSH credentials."
+    help = "Show SSH credentials and reset system password."
 
     @classmethod
     def add_args(self, p: argparse.ArgumentParser):
@@ -624,7 +624,7 @@ class Ssh(Command):
             transient=True,
         ) as pbar:
             # Generate a new SFTP password from CodeRed Cloud API.
-            t = pbar.add_task("Generating system credentials", total=None)
+            t = pbar.add_task("Resetting system password", total=None)
             passwd = w.api_get_sftp_password()
             pbar.update(t, total=1, completed=1)
         CONSOLE.print(
