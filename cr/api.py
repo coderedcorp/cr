@@ -52,6 +52,16 @@ from cr.utils import wagtail_settings_fix
 from cr.utils import wordpress_wpconfig_check
 
 
+class Client(NamedTuple):
+    id: int
+    name: str
+    address: str
+    address_city: str
+    address_state: str
+    address_postal: str
+    address_country: str
+
+
 class DatabaseServer(NamedTuple):
     hostname: str
     db_type: DatabaseType
@@ -69,11 +79,20 @@ class Webapp:
     queueing.
     """
 
-    def __init__(self, handle: str, token: str, env: Env = Env.PROD):
+    def __init__(
+        self,
+        handle: str,
+        token: str,
+        env: Env = Env.PROD,
+        from_dict: Optional[dict] = None,
+    ):
         """
         Loads the webapp info from CodeRed Cloud API.
         """
-        status, d = coderedapi(f"/api/webapps/{handle}/", "GET", token)
+        if from_dict:
+            d = from_dict
+        else:
+            _, d = coderedapi(f"/api/webapps/{handle}/", "GET", token)
 
         self.handle: str = handle
         self.token: str = token
@@ -81,8 +100,10 @@ class Webapp:
 
         # Populate the object from API response.
         self.id: int = d["id"]
+        self._client: Optional[Client] = None
         self.app_type: AppType = AppType(d["app_type"])
         self.app_type_name: str = d["app_type_info"]["name"]
+        self.client_id: int = d["client"]
         self.container_img: str = d.get("container_img", "")
         self.container_img_using: str = d.get("container_img_using", "")
         self.databases: List[str] = d["databases"]
@@ -123,6 +144,34 @@ class Webapp:
                 internet_gateway=serverdict["internet_gateway"],
                 public_ip4=serverdict["public_ip4"],
             )
+
+    @classmethod
+    def all(cls, token: str) -> List["Webapp"]:
+        """
+        Returns a list of all webapps this token can access.
+        """
+        _, result = coderedapi("/api/webapps/", "GET", token)
+        wlist = []
+        for item in result:
+            wlist.append(cls(item.get("handle"), token, from_dict=item))
+        return wlist
+
+    @property
+    def client(self) -> Client:
+        if not self._client:
+            _, d = coderedapi(
+                f"/api/clients/{self.client_id}/", "GET", self.token
+            )
+            self._client = Client(
+                d["id"],
+                d["name"],
+                d["address"],
+                d["address_city"],
+                d["address_state"],
+                d["address_postal"],
+                d["address_country"],
+            )
+        return self._client
 
     @property
     def url(self) -> str:
@@ -576,10 +625,10 @@ def coderedapi(
     token: str,
     data: Optional[dict] = None,
     ok: List[int] = [200, 201],
-) -> Tuple[int, Dict[str, Any]]:
+) -> Tuple[int, Any]:
     """
     Calls CodeRed Cloud API and returns a tuple of:
-    (HTTP status code, dict of returned JSON).
+    (HTTP status code, dict or list of returned JSON).
 
     Raises a human-readable exception if the status code is not in ``ok``.
     """

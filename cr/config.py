@@ -10,6 +10,7 @@ from pathlib import Path
 from pathlib import PurePosixPath
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 from cr import LOGGER
 
@@ -18,6 +19,7 @@ from cr import LOGGER
 # They should never be printed or logged.
 _SECRETS = ["token"]
 
+_PERSONAL_CONFIG_PATH = Path("~/.cr.ini").expanduser().resolve()
 
 _CONFIG = configparser.ConfigParser(default_section="cr")
 
@@ -28,7 +30,7 @@ def load_config(lp: List[Path] = []) -> List[str]:
     """
     read = _CONFIG.read(
         [
-            Path("~/.cr.ini").expanduser().resolve(),
+            _PERSONAL_CONFIG_PATH,
             Path(".cr.ini").resolve(),
             *lp,
         ]
@@ -130,3 +132,44 @@ def config_pureposixpath_list(
     if not lp:
         return f
     return lp
+
+
+def config_has_key(k: str) -> Tuple[Optional[str], bool]:
+    """
+    Checks if the config has a key ``k`` in any section of any file.
+
+    Returns a tuple of the first section or env variable containing ``k``, and a
+    bool if it is an env var.
+    """
+    # If key is a secret, check if it's in an env var.
+    if k in _SECRETS:
+        name = f"CR_{k.upper()}"
+        if name in os.environ.keys():
+            return (name, True)
+
+    # Check config files.
+    for s in _CONFIG.sections():
+        if k in _CONFIG[s].keys():
+            return (s, False)
+
+    return (None, False)
+
+
+def write_token(token: str) -> Path:
+    """
+    Writes an API key to the default ``[cr]`` section in the user's home
+    directory. Returns the path to the written config file.
+    """
+    # First read the user's personal config file.
+    c = configparser.ConfigParser(default_section="cr")
+    c.read(_PERSONAL_CONFIG_PATH)
+    c.set("cr", "token", token)
+    with open(_PERSONAL_CONFIG_PATH, "w") as f:
+        f.write(
+            "; CodeRed Cloud CLI configuration file.\n"
+            ";\n"
+            "; https://www.codered.cloud/cli/\n"
+            ";\n"
+        )
+        c.write(f)
+    return _PERSONAL_CONFIG_PATH
