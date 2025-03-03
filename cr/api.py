@@ -672,7 +672,17 @@ def check_update(c: Optional[Console] = None) -> Tuple[bool, Optional[str]]:
             timeout=1,
         )
         newver = gh["tag_name"].strip("vV")
-        if VERSION != newver:
+        # Compare ``X.Y`` semantic versions.
+        is_newer = False
+        my_maj = int(VERSION.split(".")[0])
+        my_min = int(VERSION.split(".")[1])
+        gh_maj = int(newver.split(".")[0])
+        gh_min = int(newver.split(".")[1])
+        if gh_maj > my_maj:
+            is_newer = True
+        if (gh_maj == my_maj) and (gh_min > my_min):
+            is_newer = True
+        if is_newer:
             if c:
                 p = Panel(
                     f"Newer version of cr [cr.code]{newver}[/] is available!\n"
