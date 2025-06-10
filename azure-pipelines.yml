@@ -58,6 +58,8 @@ stages:
 
 
 # Run tests and build bundles for each platform.
+# NOTE: Always use the OLDEST available OS for each platform,
+# To ensure maximum compatibility for customers.
 - stage: Build_Dist
   displayName: Build Distributables
   dependsOn: Quality_Control
@@ -75,9 +77,9 @@ stages:
 
   jobs:
   - job: windows
-    displayName: Windows 10
+    displayName: Windows
     pool:
-      vmImage: "windows-2019"
+      vmImage: "windows-2022"
     steps:
     - task: UsePythonVersion@0
       displayName: "Use Python version"
@@ -115,7 +117,7 @@ stages:
       artifact: cr.exe
 
   - job: macos
-    displayName: macOS 13
+    displayName: macOS
     pool:
       vmImage: "macOS-13"
 
@@ -158,9 +160,9 @@ stages:
       artifact: cr-macos
 
   - job: ubuntu
-    displayName: Ubuntu 20.04
+    displayName: Ubuntu
     pool:
-      vmImage: "ubuntu-20.04"
+      vmImage: "ubuntu-22.04"
 
     steps:
     - task: UsePythonVersion@0
