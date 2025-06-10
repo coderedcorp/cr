@@ -261,6 +261,24 @@ def git_ignored(p: Optional[Path] = None) -> List[Path]:
     return lp
 
 
+def is_in_path(q: Path, paths: List[Path]) -> bool:
+    """
+    Check if ``q`` is in ``paths`` OR is a child of any dirs in ``paths``.
+
+    Example:
+        q = /var/src/dist/thing.txt
+        p = [ /var/src/dist, /var/src/node_modules ]
+        True
+    """
+    if q in paths:
+        return True
+    for p in paths:
+        if p.is_dir():
+            if p in q.parents:
+                return True
+    return False
+
+
 def paths_to_deploy(
     r: Path, e: List[Path] = [], i: List[Path] = []
 ) -> List[Path]:
@@ -277,6 +295,8 @@ def paths_to_deploy(
     Any file paths in the returned list must also include their parent directory
     paths within ``r``, so that consumers of this list will know to create them.
     """
+    LOGGER.debug("User exclude paths: %s", e)
+    LOGGER.debug("User include paths: %s", i)
     lp: List[Path] = []
     for root, dirs, files in os.walk(r):
         # If subdir is excluded, delete it from the list, so ``os`` will not
@@ -285,13 +305,13 @@ def paths_to_deploy(
         for d in dirs_copy:
             dp = Path(os.path.join(root, d))
             dpr = dp.resolve()
-            # Force add if included.
-            if dpr in i:
+            # Force add if dir should be included.
+            if is_in_path(dpr, i):
                 LOGGER.debug("Force include %s", dpr)
                 lp.append(dpr)
             # Delete from the list if excluded, so it will not be walked.
             elif (
-                dpr in e
+                is_in_path(dpr, e)
                 or dpr.name.startswith(".")
                 or dpr.name in EXCLUDE_DIRNAMES
             ):
@@ -305,12 +325,12 @@ def paths_to_deploy(
         for f in files:
             fp = Path(os.path.join(root, f))
             fpr = fp.resolve()
-            # Force add if included.
-            if fpr in i:
+            # Force add if file should be included.
+            if is_in_path(fpr, i):
                 LOGGER.debug("Force include %s", fpr)
                 lp.append(fpr)
             # Skip if excluded.
-            elif fpr in e:
+            elif is_in_path(fpr, e):
                 LOGGER.debug("Force exclude %s", fpr)
                 pass
             # Otherwise add by default.
@@ -487,6 +507,14 @@ def html_index_check(p: Path) -> None:
     """
     if not (p / "index.html").is_file():
         raise FileNotFoundError("index.html")
+
+
+def crrun_check(p: Path) -> None:
+    """
+    Checks for existence of an cr-run.sh file.
+    """
+    if not (p / "cr-run.sh").is_file():
+        raise FileNotFoundError("cr-run.sh")
 
 
 def wagtail_settings_fix(p: Path) -> None:

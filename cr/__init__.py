@@ -63,6 +63,7 @@ class AppType(enum.Enum):
     CODEREDCMS = "coderedcms"
     DJANGO = "django"
     HTML = "html"
+    NODEJS = "nodejs"
     WAGTAIL = "wagtail"
     WORDPRESS = "wordpress"
 

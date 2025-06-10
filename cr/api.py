@@ -36,6 +36,7 @@ from cr import DatabaseType
 from cr import Env
 from cr import UserCancelError
 from cr.rich_utils import Console
+from cr.utils import crrun_check
 from cr.utils import django_manage_check
 from cr.utils import django_requirements_check
 from cr.utils import django_run_check
@@ -208,6 +209,8 @@ class Webapp:
             AppType.WAGTAIL,
         ]:
             self.local_check_django(p, c)
+        elif self.app_type == AppType.NODEJS:
+            self.local_check_nodejs(p, c)
         elif self.app_type == AppType.WORDPRESS:
             self.local_check_wordpress(p, c)
         elif self.app_type == AppType.HTML:
@@ -302,6 +305,12 @@ class Webapp:
     def local_check_html(self, p: Path, c: Optional[Console] = None) -> None:
         try:
             html_index_check(p)
+        except FileNotFoundError as err:
+            _prompt_filenotfound(err, c)
+
+    def local_check_nodejs(self, p: Path, c: Optional[Console] = None) -> None:
+        try:
+            crrun_check(p)
         except FileNotFoundError as err:
             _prompt_filenotfound(err, c)
 
