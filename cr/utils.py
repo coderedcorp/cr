@@ -273,7 +273,7 @@ def is_in_path(q: Path, paths: List[Path]) -> bool:
     if q in paths:
         return True
     for p in paths:
-        if p.is_dir:
+        if p.is_dir():
             if p in q.parents:
                 return True
     return False
