@@ -325,12 +325,12 @@ def paths_to_deploy(
         for f in files:
             fp = Path(os.path.join(root, f))
             fpr = fp.resolve()
-            # Force add if included.
-            if fpr in i:
+            # Force add if file should be included.
+            if is_in_path(fpr, i):
                 LOGGER.debug("Force include %s", fpr)
                 lp.append(fpr)
             # Skip if excluded.
-            elif fpr in e:
+            elif is_in_path(fpr, e):
                 LOGGER.debug("Force exclude %s", fpr)
                 pass
             # Otherwise add by default.
