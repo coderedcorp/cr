@@ -651,22 +651,6 @@ class Sftp(Command):
         port = 22
         user = w.handle
         passwd = ""
-        with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            SpinnerColumn(),
-            console=CONSOLE,
-            transient=True,
-        ) as pbar:
-            # Generate a new SFTP password from CodeRed Cloud API.
-            t = pbar.add_task("Resetting system password", total=None)
-            passwd = w.api_get_sftp_password()
-            pbar.update(t, total=1, completed=1)
-        CONSOLE.print(
-            f"SFTP host:       {host}\n"
-            f"SFTP port:       {port}\n"
-            f"SFTP user:       {user}\n"
-            f"System password: {passwd}"
-        )
         p = Panel(
             "[logging.level.warning]NOTE:[/] "
             "Passwords are temporary and may be reset every time your "
@@ -675,6 +659,22 @@ class Sftp(Command):
             border_style="cr.update_border",
         )
         CONSOLE_ERR.print(p)
+        CONSOLE.print(
+            f"SFTP host:       {host}\n"
+            f"SFTP port:       {port}\n"
+            f"SFTP user:       {user}"
+        )
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            SpinnerColumn(),
+            console=CONSOLE,
+            transient=True,
+        ) as pbar:
+            # Generate a new SFTP password from CodeRed Cloud API.
+            t = pbar.add_task("System password:", total=None)
+            passwd = w.api_get_sftp_password()
+            pbar.update(t, total=1, completed=1)
+        CONSOLE.print(f"System password: {passwd}")
 
 
 class Ssh(Command):
@@ -710,20 +710,6 @@ class Ssh(Command):
         port = 2222
         user = w.handle
         passwd = ""
-        with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            SpinnerColumn(),
-            console=CONSOLE,
-            transient=True,
-        ) as pbar:
-            # Generate a new SFTP password from CodeRed Cloud API.
-            t = pbar.add_task("Resetting system password", total=None)
-            passwd = w.api_get_sftp_password()
-            pbar.update(t, total=1, completed=1)
-        CONSOLE.print(
-            f"SSH command:     ssh -p {port} {user}@{host}\n"
-            f"System password: {passwd}"
-        )
         p = Panel(
             "[logging.level.warning]NOTE:[/] "
             "Passwords are temporary and may be reset every time your "
@@ -732,6 +718,18 @@ class Ssh(Command):
             border_style="cr.update_border",
         )
         CONSOLE_ERR.print(p)
+        CONSOLE.print(f"SSH command:     ssh -p {port} {user}@{host}")
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            SpinnerColumn(),
+            console=CONSOLE,
+            transient=True,
+        ) as pbar:
+            # Generate a new SFTP password from CodeRed Cloud API.
+            t = pbar.add_task("System password:", total=None)
+            passwd = w.api_get_sftp_password()
+            pbar.update(t, total=1, completed=1)
+        CONSOLE.print(f"System password: {passwd}")
 
 
 class Upload(Command):

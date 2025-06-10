@@ -511,9 +511,13 @@ class Webapp:
         """
         kill = False
         since = 0
+        # Poll for up to 180 seconds (18 * 10 sec sleep).
         for i in range(18):
             data = self.api_get_logs(since=since)
             logs = data["logs"]
+            # If there are more than 100 lines, skip the fancy scrolling
+            # and just print the whole thing.
+            biglogs = len(logs) > 100
             if not logs:
                 kill = True
             for line in logs:
@@ -530,7 +534,8 @@ class Webapp:
                 )
                 if "\x04" in text:
                     kill = True
-                time.sleep(0.05)
+                if not biglogs:
+                    time.sleep(0.05)
             if kill:
                 break
             time.sleep(10)
