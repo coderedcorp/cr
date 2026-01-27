@@ -87,7 +87,7 @@ class Console(_Console):
             if nouser:
                 self.print("  (Continuing without user input)")
             else:
-                self.print("  (Not continuting without user input)")
+                self.print("  (Not continuing without user input)")
             return nouser
 
 
