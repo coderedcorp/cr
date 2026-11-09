@@ -9,8 +9,6 @@ import stat
 from dataclasses import dataclass
 from pathlib import Path
 from pathlib import PurePosixPath
-from typing import List
-from typing import Optional
 
 from paramiko.client import AutoAddPolicy
 from paramiko.client import SSHClient
@@ -30,7 +28,7 @@ class TransferPath:
     local: Path
     relative: PurePosixPath
     remote: PurePosixPath
-    remote_st_mode: Optional[int]
+    remote_st_mode: int | None
 
 
 class Server:
@@ -42,8 +40,8 @@ class Server:
         self.host = host
         self.user = user
         self.passwd = passwd
-        self._client: Optional[SSHClient] = None
-        self._sftp: Optional[SFTPClient] = None
+        self._client: SSHClient | None = None
+        self._sftp: SFTPClient | None = None
 
     def connect(self) -> SSHClient:
         """
@@ -82,10 +80,10 @@ class Server:
 
     def put(
         self,
-        lp: List[Path],
+        lp: list[Path],
         r: Path,
         s: PurePosixPath,
-        progress: Optional[Progress] = None,
+        progress: Progress | None = None,
     ) -> None:
         """
         Upload a list of paths ``lp``, relative to local root Path ``r`` to
@@ -133,8 +131,8 @@ class Server:
         self,
         s: PurePosixPath,
         r: Path,
-        e: List[PurePosixPath] = [],
-        progress: Optional[Progress] = None,
+        e: list[PurePosixPath] = [],
+        progress: Progress | None = None,
     ) -> None:
         """
         Recursively download a Path ``s`` from the server to local directory ``r``.
@@ -155,8 +153,8 @@ class Server:
 
         def walk_remote(
             sp: PurePosixPath,
-            lp: List[TransferPath] = [],
-        ) -> List[TransferPath]:
+            lp: list[TransferPath] = [],
+        ) -> list[TransferPath]:
             """
             Recursively scan remote dir ``sp``, and return list of files and
             directories to download ``lp``.

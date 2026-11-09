@@ -14,10 +14,6 @@ from pathlib import Path
 from subprocess import PIPE
 from subprocess import Popen
 from typing import IO
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 from cr import LOGGER
 from cr import ConfigurationError
@@ -62,7 +58,7 @@ def get_command(program: str) -> Path:
         return Path(program)
 
     # Get list of executable extensions (Windows).
-    exts: List[str] = []
+    exts: list[str] = []
     if os.environ.get("PATHEXT"):
         exts = os.environ["PATHEXT"].split(";")
 
@@ -82,12 +78,12 @@ def get_command(program: str) -> Path:
 
 
 def exec_proc(
-    args: List[str],
-    infile: Optional[Path] = None,
-    outfile: Optional[Path] = None,
+    args: list[str],
+    infile: Path | None = None,
+    outfile: Path | None = None,
     outfile_mode: str = "w",
-    ok_exit_codes: List[int] = [0],
-) -> Tuple[int, str, str]:
+    ok_exit_codes: list[int] = [0],
+) -> tuple[int, str, str]:
     """
     Executes a process on the local machine.
 
@@ -110,15 +106,15 @@ def exec_proc(
         # Find program on PATH.
         args[0] = str(get_command(args[0]))
 
-    stdin: Union[IO, None] = None
-    stdout: Union[IO, int] = PIPE
+    stdin: IO | None = None
+    stdout: IO | int = PIPE
 
     if infile:
         LOGGER.debug("Opening `%s`.", infile)
-        stdin = open(infile, "r", encoding="utf8")
+        stdin = open(infile, "r", encoding="utf8")  # noqa: SIM115
     if outfile:
         LOGGER.debug("Opening `%s`.", outfile)
-        stdout = open(outfile, outfile_mode, encoding="utf8")
+        stdout = open(outfile, outfile_mode, encoding="utf8")  # noqa: SIM115
 
     # NOTE: PyInstaller adds an entry to LD_LIBRARY_PATH in env during python
     # runtime. This is needed for PyInstaller to work, but it can interfere with
@@ -128,8 +124,7 @@ def exec_proc(
     # load any dynamically linked libraries from the system, or might load the
     # wrong libraries from PyInstaller!
     fixenv: dict = os.environ.copy()
-    if "LD_LIBRARY_PATH" in fixenv:
-        del fixenv["LD_LIBRARY_PATH"]
+    fixenv.pop("LD_LIBRARY_PATH", None)
     LOGGER.info("Running `%s`...", args)
     LOGGER.debug("Running `%s` with ENV: %s", args, fixenv)
     try:
@@ -166,7 +161,7 @@ def exec_proc(
     )
 
 
-def stdout_to_list(stdout: str) -> List[str]:
+def stdout_to_list(stdout: str) -> list[str]:
     """
     Cleans and splits newline delimited stdout to a list.
     """
@@ -183,7 +178,7 @@ def git_branch() -> str:
     If git exits with an error, or is not on the path, return empty string.
     """
     try:
-        code, out, err = exec_proc(["git", "branch", "--show-current"])
+        code, out, _err = exec_proc(["git", "branch", "--show-current"])
         if code != 0:
             return ""
         LOGGER.debug("Git branch `%s`.", out)
@@ -192,13 +187,13 @@ def git_branch() -> str:
         return ""
 
 
-def git_uncommitted() -> List[str]:
+def git_uncommitted() -> list[str]:
     """
     Checks for un-committed changes.
     Returns list of changed file names, or empty list if no changes.
     """
     try:
-        code, out, err = exec_proc(["git", "diff", "--name-only", "HEAD"])
+        code, out, _err = exec_proc(["git", "diff", "--name-only", "HEAD"])
         if code != 0:
             return []
         diff_list = stdout_to_list(out)
@@ -207,7 +202,7 @@ def git_uncommitted() -> List[str]:
         return []
 
 
-def git_unpushed() -> List[str]:
+def git_unpushed() -> list[str]:
     """
     Checks for un-pushed changes.
     Returns list of changed file names, or empty list if no changes.
@@ -219,7 +214,7 @@ def git_unpushed() -> List[str]:
 
     # Check for changes against the remote branch.
     try:
-        code, out, err = exec_proc(
+        code, out, _err = exec_proc(
             ["git", "diff", "--name-only", f"origin/{b}"],
         )
         if code != 0:
@@ -230,11 +225,11 @@ def git_unpushed() -> List[str]:
         return []
 
 
-def git_ignored(p: Optional[Path] = None) -> List[Path]:
+def git_ignored(p: Path | None = None) -> list[Path]:
     """
     Returns a list of absolute file and directory paths ignored by git.
     """
-    lp: List[Path] = []
+    lp: list[Path] = []
 
     # Build the command.
     cmd = ["git", "ls-files", "--others", "--directory"]
@@ -244,7 +239,7 @@ def git_ignored(p: Optional[Path] = None) -> List[Path]:
     # Run the command.
     # If git exits with an error, or is not on the path, return an empty list.
     try:
-        code, out, err = exec_proc(cmd)
+        code, out, _err = exec_proc(cmd)
         if code != 0:
             return lp
     except FileNotFoundError:
@@ -261,7 +256,7 @@ def git_ignored(p: Optional[Path] = None) -> List[Path]:
     return lp
 
 
-def is_in_path(q: Path, paths: List[Path]) -> bool:
+def is_in_path(q: Path, paths: list[Path]) -> bool:
     """
     Check if ``q`` is in ``paths`` OR is a child of any dirs in ``paths``.
 
@@ -273,15 +268,14 @@ def is_in_path(q: Path, paths: List[Path]) -> bool:
     if q in paths:
         return True
     for p in paths:
-        if p.is_dir():
-            if p in q.parents:
-                return True
+        if p.is_dir() and p in q.parents:
+            return True
     return False
 
 
 def paths_to_deploy(
-    r: Path, e: List[Path] = [], i: List[Path] = []
-) -> List[Path]:
+    r: Path, e: list[Path] = [], i: list[Path] = []
+) -> list[Path]:
     """
     Walk the root local directory ``r`` and build a list of absolute file
     and directory paths which should be included in the deployment.
@@ -297,7 +291,7 @@ def paths_to_deploy(
     """
     LOGGER.debug("User exclude paths: %s", e)
     LOGGER.debug("User include paths: %s", i)
-    lp: List[Path] = []
+    lp: list[Path] = []
     for root, dirs, files in os.walk(r):
         # If subdir is excluded, delete it from the list, so ``os`` will not
         # traverse it. Otherwise, append to the list.
@@ -332,7 +326,6 @@ def paths_to_deploy(
             # Skip if excluded.
             elif is_in_path(fpr, e):
                 LOGGER.debug("Force exclude %s", fpr)
-                pass
             # Otherwise add by default.
             else:
                 lp.append(fpr)
@@ -361,7 +354,7 @@ def check_handle(value: str) -> bool:
     return is_urlsafe(value) and len(value) <= 32
 
 
-def django_run_check(p: Path) -> Tuple[bool, str]:
+def django_run_check(p: Path) -> tuple[bool, str]:
     """
     Runs ``manage.py check``.
 
@@ -371,7 +364,7 @@ def django_run_check(p: Path) -> Tuple[bool, str]:
     return (code == 0, out + err)
 
 
-def django_run_migratecheck(p: Path) -> Tuple[bool, str]:
+def django_run_migratecheck(p: Path) -> tuple[bool, str]:
     """
     Runs ``manage.py makemigrations --check``.
 

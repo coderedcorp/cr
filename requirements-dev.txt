@@ -1,12 +1,12 @@
 -e .
 build
 coverage
-mypy==1.16.*
+mypy==2.4.*
 pip>=22.3
-pyinstaller==6.14.*
+pyinstaller==6.22.*
 pytest
 pytest-cov
-ruff
+ruff==0.17.*
 setuptools>=65.5
 twine
 types-paramiko

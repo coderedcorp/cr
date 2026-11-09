@@ -48,15 +48,11 @@ class ConfigurationError(Exception):
     Raised when project does not match expected configuration.
     """
 
-    pass
-
 
 class UserCancelError(Exception):
     """
     Raised when a user intentionally cancels the current operation.
     """
-
-    pass
 
 
 class AppType(enum.Enum):

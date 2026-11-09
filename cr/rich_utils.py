@@ -5,10 +5,8 @@ Copyright (c) 2022-2024 CodeRed LLC.
 """
 
 import argparse
-from typing import Generator
-from typing import Iterable
-from typing import List
-from typing import Optional
+from collections.abc import Generator
+from collections.abc import Iterable
 
 from rich.console import WINDOWS
 from rich.console import Console as _Console
@@ -58,7 +56,7 @@ class CustomHighlighter(RegexHighlighter):
     """
 
     base_style = "cr."
-    highlights = [
+    highlights = [  # noqa: RUF012
         # Highlight --words-with-dashes as cr.argparse_args.
         r"\W(?P<argparse_args>-{1,2}[\w]+[\w-]*)",
         # Highlight text in one or more backticks as cr.code
@@ -208,7 +206,7 @@ class RichArgparseFormatter(
         prog: str,
         indent_increment: int = 2,
         max_help_position: int = 38,
-        width: Optional[int] = None,
+        width: int | None = None,
     ) -> None:
         super().__init__(prog, indent_increment, max_help_position, width)
         # Add a `renderables` array to store our custom rendering for the
@@ -216,7 +214,7 @@ class RichArgparseFormatter(
         self._root_section.renderables = []  # type: ignore[attr-defined]
 
     @property
-    def renderables(self) -> List[RenderableType]:
+    def renderables(self) -> list[RenderableType]:
         return self._current_section.renderables  # type: ignore[attr-defined]
 
     @property
@@ -246,7 +244,7 @@ class RichArgparseFormatter(
 
         return action_invocation
 
-    def add_text(self, text: Optional[str]) -> None:
+    def add_text(self, text: str | None) -> None:
         super().add_text(text)
 
         if text is not argparse.SUPPRESS and text is not None:
@@ -284,10 +282,10 @@ class RichArgparseFormatter(
 
     def add_usage(
         self,
-        usage: Optional[str],
+        usage: str | None,
         actions: Iterable[argparse.Action],
         groups: Iterable[argparse._MutuallyExclusiveGroup],
-        prefix: Optional[str] = None,
+        prefix: str | None = None,
     ) -> None:
         # Do not pass prefix along... instead format it as a group title.
         super().add_usage(usage, actions, groups, prefix)
@@ -302,10 +300,10 @@ class RichArgparseFormatter(
 
     def _format_usage(
         self,
-        usage: Optional[str],
+        usage: str | None,
         actions: Iterable[argparse.Action],
         groups: Iterable[argparse._ArgumentGroup],
-        prefix: Optional[str] = None,
+        prefix: str | None = None,
     ):
         """
         Override to generate a shorter / more concise version of the usage.
@@ -313,17 +311,17 @@ class RichArgparseFormatter(
         """
         # If usage is specified, use that.
         if usage is not None:
-            usage = usage % dict(prog=self._prog)
+            usage = usage % {"prog": self._prog}
 
         # If no optionals or positionals are available, usage is just prog.
         elif usage is None and not actions:
-            usage = "%(prog)s" % dict(prog=self._prog)
+            usage = str(self._prog)
 
         # If optionals and positionals are available, calculate a
         # condensed/simplified version compared to what argparse normally
         # generates.
         elif usage is None:
-            usage = "%(prog)s" % dict(prog=self._prog)
+            usage = str(self._prog)
 
             # Split optionals from positionals.
             optionals = []
@@ -346,7 +344,7 @@ class RichArgparseFormatter(
 
         return usage
 
-    def start_section(self, heading: Optional[str]) -> None:
+    def start_section(self, heading: str | None) -> None:
         super().start_section(
             heading
         )  # sets self._current_section to child section
@@ -438,10 +436,10 @@ class SphinxArgparseFormatter(
 
     def _format_usage(
         self,
-        usage: Optional[str],
+        usage: str | None,
         actions: Iterable[argparse.Action],
         groups: Iterable[argparse._ArgumentGroup],
-        prefix: Optional[str] = None,
+        prefix: str | None = None,
     ):
         """
         Override to generate a shorter / more concise version of the usage.
@@ -449,17 +447,17 @@ class SphinxArgparseFormatter(
         """
         # If usage is specified, use that.
         if usage is not None:
-            usage = usage % dict(prog=self._prog)
+            usage = usage % {"prog": self._prog}
 
         # If no optionals or positionals are available, usage is just prog.
         elif usage is None and not actions:
-            usage = "%(prog)s" % dict(prog=self._prog)
+            usage = str(self._prog)
 
         # If optionals and positionals are available, calculate a
         # condensed/simplified version compared to what argparse normally
         # generates.
         elif usage is None:
-            usage = "%(prog)s" % dict(prog=self._prog)
+            usage = str(self._prog)
 
             # Split optionals from positionals.
             optionals = []

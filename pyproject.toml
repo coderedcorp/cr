@@ -12,15 +12,15 @@ classifiers = [
 ]
 dependencies = [
     "certifi",
-    "paramiko==3.5.*",
-    "rich==13.9.*",
+    "paramiko==5.1.*",
+    "rich==15.0.*",
 ]
 description = "The official CodeRed Cloud command line tool."
 dynamic = ["version"]
 license = {file = "LICENSE.txt"}
 name = "cr"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 
 [project.scripts]
 cr = "cr.cli:main"
@@ -47,6 +47,7 @@ line-length = 80
 
 [tool.ruff.lint]
 extend-select = ["I"]
+ignore = ["B006", "BLE001", "TRY002"]
 
 [tool.ruff.lint.isort]
 case-sensitive = false
