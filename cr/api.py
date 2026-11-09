@@ -10,12 +10,7 @@ import time
 from http.client import HTTPResponse
 from pathlib import Path
 from typing import Any
-from typing import Dict
-from typing import List
 from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
-from typing import Union
 from urllib.error import HTTPError
 from urllib.request import Request
 from urllib.request import urlopen
@@ -85,7 +80,7 @@ class Webapp:
         handle: str,
         token: str,
         env: Env = Env.PROD,
-        from_dict: Optional[dict] = None,
+        from_dict: dict | None = None,
     ):
         """
         Loads the webapp info from CodeRed Cloud API.
@@ -101,24 +96,24 @@ class Webapp:
 
         # Populate the object from API response.
         self.id: int = d["id"]
-        self._client: Optional[Client] = None
+        self._client: Client | None = None
         self.app_type: AppType = AppType(d["app_type"])
         self.app_type_name: str = d["app_type_info"]["name"]
         self.client_id: int = d["client"]
         self.container_img: str = d.get("container_img", "")
         self.container_img_using: str = d.get("container_img_using", "")
-        self.databases: List[str] = d["databases"]
+        self.databases: list[str] = d["databases"]
         self.django_project: str = d["django_project"]
         self.feature_ssh: bool = d.get("feature_ssh", False)
         self.name: str = d["name"]
         self.primary_domain: str = d["primary_domain"]
         self.primary_url: str = d["primary_url"]
-        self.prod_dbserver: Optional[DatabaseServer] = None
-        self.prod_server: Optional[WebServer] = None
+        self.prod_dbserver: DatabaseServer | None = None
+        self.prod_server: WebServer | None = None
         self.sftp_prod_domain: str = d["sftp_prod_domain"]
         self.sftp_staging_domain: str = d["sftp_staging_domain"]
-        self.staging_dbserver: Optional[DatabaseServer] = None
-        self.staging_server: Optional[WebServer] = None
+        self.staging_dbserver: DatabaseServer | None = None
+        self.staging_server: WebServer | None = None
         dbdict = d.get("prod_dbserver")
         if dbdict:
             self.prod_dbserver = DatabaseServer(
@@ -147,7 +142,7 @@ class Webapp:
             )
 
     @classmethod
-    def all(cls, token: str) -> List["Webapp"]:
+    def all(cls, token: str) -> list["Webapp"]:
         """
         Returns a list of all webapps this token can access.
         """
@@ -190,7 +185,7 @@ class Webapp:
         """
         return getattr(self, f"{self.env}_dbserver")
 
-    def local_check(self, p: Path, c: Optional[Console]) -> None:
+    def local_check(self, p: Path, c: Console | None) -> None:
         """
         Check that provided Path ``p`` appears to contain a valid AppType
         project. If Console ``c`` is provided, ask the user for input to
@@ -216,7 +211,7 @@ class Webapp:
         elif self.app_type == AppType.HTML:
             self.local_check_html(p, c)
 
-    def local_check_django(self, p: Path, c: Optional[Console] = None) -> None:
+    def local_check_django(self, p: Path, c: Console | None = None) -> None:
         """
         Checks that a Django or Wagtail project contains correct files and
         structure, and offers to fix files when possible.
@@ -302,27 +297,25 @@ class Webapp:
             if self.app_type in [AppType.CODEREDCMS, AppType.WAGTAIL]:
                 wagtail_settings_fix(settings)
 
-    def local_check_html(self, p: Path, c: Optional[Console] = None) -> None:
+    def local_check_html(self, p: Path, c: Console | None = None) -> None:
         try:
             html_index_check(p)
         except FileNotFoundError as err:
             _prompt_filenotfound(err, c)
 
-    def local_check_nodejs(self, p: Path, c: Optional[Console] = None) -> None:
+    def local_check_nodejs(self, p: Path, c: Console | None = None) -> None:
         try:
             crrun_check(p)
         except FileNotFoundError as err:
             _prompt_filenotfound(err, c)
 
-    def local_check_wordpress(
-        self, p: Path, c: Optional[Console] = None
-    ) -> None:
+    def local_check_wordpress(self, p: Path, c: Console | None = None) -> None:
         try:
             wordpress_wpconfig_check(p)
         except FileNotFoundError as err:
             _prompt_filenotfound(err, c)
 
-    def local_predeploy(self, p: Path, c: Optional[Console]) -> None:
+    def local_predeploy(self, p: Path, c: Console | None) -> None:
         """
         Runs various common checks before a deployment, to help prevent the
         user from creating a broken deployment or deviating from the recommended
@@ -331,42 +324,58 @@ class Webapp:
 
         # Check git branch.
         b = git_branch()
-        if b and self.env == Env.STAGING and b not in STAGING_BRANCHES:
-            if c and not c.prompt_yn(
+        if (
+            b
+            and self.env == Env.STAGING
+            and b not in STAGING_BRANCHES
+            and c
+            and not c.prompt_yn(
                 f"You are deploying to STAGING from the `{b}` branch!\n"
                 "It is recommended to deploy from a dedicated staging branch.\n"
                 "Continue anyways?",
                 nouser=True,
-            ):
-                raise UserCancelError()
-        if b and self.env == Env.PROD and b not in PROD_BRANCHES:
-            if c and not c.prompt_yn(
+            )
+        ):
+            raise UserCancelError()
+        if (
+            c
+            and b
+            and self.env == Env.PROD
+            and b not in PROD_BRANCHES
+            and not c.prompt_yn(
                 f"You are deploying to PROD from the `{b}` branch!\n"
                 "It is recommended to deploy from a dedicated production branch.\n"
                 "Continue anyways?",
                 nouser=True,
-            ):
-                raise UserCancelError()
+            )
+        ):
+            raise UserCancelError()
 
         # Check for un-commited changes.
-        if git_uncommitted():
-            if c and not c.prompt_yn(
+        if (
+            c
+            and git_uncommitted()
+            and not c.prompt_yn(
                 "You have changes which are NOT COMMITTED to git!\n"
                 "It is recommended to commit and push your changes before deploying.\n"
                 "Continue anyways?",
                 nouser=True,
-            ):
-                raise UserCancelError()
+            )
+        ):
+            raise UserCancelError()
 
         # Check for un-pushed.
-        if git_unpushed():
-            if c and not c.prompt_yn(
+        if (
+            c
+            and git_unpushed()
+            and not c.prompt_yn(
                 "You have changes which are NOT PUSHED to git!\n"
                 "It is recommended to push your changes before deploying.\n"
                 "Continue anyways?",
                 nouser=True,
-            ):
-                raise UserCancelError()
+            )
+        ):
+            raise UserCancelError()
 
         if self.app_type in [
             AppType.CODEREDCMS,
@@ -375,7 +384,7 @@ class Webapp:
         ]:
             self.local_predeploy_django(p, c)
 
-    def local_predeploy_django(self, p: Path, c: Optional[Console]) -> None:
+    def local_predeploy_django(self, p: Path, c: Console | None) -> None:
         """
         Runs Django-specific checks before a deployment, to help prevent the
         user from creating a broken deployment.
@@ -437,7 +446,7 @@ class Webapp:
         """
         Resets and retrieves the tenant's SFTP password for ``env``.
         """
-        status, d = coderedapi(
+        _status, d = coderedapi(
             "/api/tasks/",
             "POST",
             self.token,
@@ -580,7 +589,7 @@ class Webapp:
         raise TimeoutError(f"Task ID {task_id} has not completed.")
 
 
-def _response_to_json(r: Union[HTTPResponse, HTTPError]) -> dict:
+def _response_to_json(r: HTTPResponse | HTTPError) -> dict:
     """
     Parses a JSON response from an HTTPResponse or HTTPError as a dictionary.
     """
@@ -595,10 +604,10 @@ def _response_to_json(r: Union[HTTPResponse, HTTPError]) -> dict:
 def request_json(
     url: str,
     method: str = "GET",
-    headers: Dict[str, str] = {},
-    data: Optional[dict] = None,
-    timeout: Optional[int] = None,
-) -> Tuple[int, dict]:
+    headers: dict[str, str] = {},
+    data: dict | None = None,
+    timeout: int | None = None,
+) -> tuple[int, dict]:
     """
     Makes an HTTP request and parses the JSON response.
     """
@@ -637,9 +646,9 @@ def coderedapi(
     endpoint: str,
     method: str,
     token: str,
-    data: Optional[dict] = None,
-    ok: List[int] = [200, 201],
-) -> Tuple[int, Any]:
+    data: dict | None = None,
+    ok: list[int] = [200, 201],
+) -> tuple[int, Any]:
     """
     Calls CodeRed Cloud API and returns a tuple of:
     (HTTP status code, dict or list of returned JSON).
@@ -673,7 +682,7 @@ def coderedapi(
     return (code, d)
 
 
-def check_update(c: Optional[Console] = None) -> Tuple[bool, Optional[str]]:
+def check_update(c: Console | None = None) -> tuple[bool, str | None]:
     """
     Check if a new version is available and print to Console ``c``.
     If this fails or takes longer than 1 second, simply ignore it.
@@ -712,7 +721,7 @@ def check_update(c: Optional[Console] = None) -> Tuple[bool, Optional[str]]:
 
 
 def _prompt_filenotfound(
-    err: FileNotFoundError, c: Optional[Console] = None
+    err: FileNotFoundError, c: Console | None = None
 ) -> None:
     """
     If Console ``c`` is provided, ask the user to continue when a file is not

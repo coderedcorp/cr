@@ -4,6 +4,7 @@ from pathlib import PurePosixPath
 
 from cr.config import config
 from cr.config import config_bool
+from cr.config import config_has_key
 from cr.config import config_path_list
 from cr.config import config_pureposixpath_list
 from cr.config import load_config
@@ -25,6 +26,7 @@ test_bool_true = true
 
 [demo]
 test_str = demo_str
+token = demo_token
 """
 
 
@@ -71,6 +73,17 @@ class TestCli(unittest.TestCase):
         # Test fallback.
         self.assertEqual(config("junk", f="junkval"), "junkval")
 
+    def test_secret(self):
+        self.assertEqual(config("token"), "cr_token")
+        self.assertEqual(config("token", "demo"), "demo_token")
+        # Test invalid webapp (should fallback to [cr])
+        self.assertEqual(config("token", "junk"), "cr_token")
+
+    def test_has_key(self):
+        section, is_env = config_has_key("token")
+        self.assertEqual(section, "demo")
+        self.assertFalse(is_env)
+
     def test_bool(self):
         self.assertTrue(config_bool("test_bool_true", "demo"))
         self.assertFalse(config_bool("test_bool_false", "demo"))
@@ -82,7 +95,7 @@ class TestCli(unittest.TestCase):
         paths = config_path_list("test_paths")
         self.assertEqual(
             paths,
-            [Path(".").resolve(), Path("test_config.py").resolve()],
+            [Path.cwd().resolve(), Path("test_config.py").resolve()],
         )
         # Test fallback.
         paths = config_path_list("junk", f=[Path("/")])

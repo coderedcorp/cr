@@ -8,9 +8,6 @@ import configparser
 import os
 from pathlib import Path
 from pathlib import PurePosixPath
-from typing import List
-from typing import Optional
-from typing import Tuple
 
 from cr import LOGGER
 
@@ -24,7 +21,7 @@ _PERSONAL_CONFIG_PATH = Path("~/.cr.ini").expanduser().resolve()
 _CONFIG = configparser.ConfigParser(default_section="cr")
 
 
-def load_config(lp: List[Path] = []) -> List[str]:
+def load_config(lp: list[Path] = []) -> list[str]:
     """
     Reads config files from pre-defined paths, plus any additional paths ``lp``.
     """
@@ -39,7 +36,7 @@ def load_config(lp: List[Path] = []) -> List[str]:
     return read
 
 
-def config(k, w: str = "cr", f: Optional[str] = None) -> Optional[str]:
+def config(k, w: str = "cr", f: str | None = None) -> str | None:
     """
     Queries the various config files for a key ``k`` in either the default
     section [cr], or overridden in a webapp section ``w`` [``w``].
@@ -71,7 +68,7 @@ def config(k, w: str = "cr", f: Optional[str] = None) -> Optional[str]:
     return val
 
 
-def config_bool(k, w: str = "cr", f: Optional[bool] = None) -> Optional[bool]:
+def config_bool(k, w: str = "cr", f: bool | None = None) -> bool | None:
     """
     Queries a config and parses it as a boolean. Acceptable case-insensitive
     values are: on, off, yes, no, true, false, 0, 1
@@ -82,7 +79,7 @@ def config_bool(k, w: str = "cr", f: Optional[bool] = None) -> Optional[bool]:
     return val.lower() in ["yes", "on", "true", "1"]
 
 
-def config_path_list(k, w: str = "cr", f: List[Path] = []) -> List[Path]:
+def config_path_list(k, w: str = "cr", f: list[Path] = []) -> list[Path]:
     """
     Queries a multi-line config (newline separated and indented) and returns
     a list of resolved paths.
@@ -108,8 +105,8 @@ def config_path_list(k, w: str = "cr", f: List[Path] = []) -> List[Path]:
 
 
 def config_pureposixpath_list(
-    k, w: str = "cr", f: List[PurePosixPath] = []
-) -> List[PurePosixPath]:
+    k, w: str = "cr", f: list[PurePosixPath] = []
+) -> list[PurePosixPath]:
     """
     Queries a multi-line config (newline separated and indented) and returns
     a list of paths.
@@ -134,7 +131,7 @@ def config_pureposixpath_list(
     return lp
 
 
-def config_has_key(k: str) -> Tuple[Optional[str], bool]:
+def config_has_key(k: str) -> tuple[str | None, bool]:
     """
     Checks if the config has a key ``k`` in any section of any file.
 
@@ -144,12 +141,12 @@ def config_has_key(k: str) -> Tuple[Optional[str], bool]:
     # If key is a secret, check if it's in an env var.
     if k in _SECRETS:
         name = f"CR_{k.upper()}"
-        if name in os.environ.keys():
+        if name in os.environ:
             return (name, True)
 
     # Check config files.
     for s in _CONFIG.sections():
-        if k in _CONFIG[s].keys():
+        if k in _CONFIG[s]:
             return (s, False)
 
     return (None, False)

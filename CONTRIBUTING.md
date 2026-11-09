@@ -47,6 +47,7 @@ For example:
 def fun(name, age):
     return f"{0}, age: {1}"
 
+
 # Annotated. Requires string, int; and returns a string.
 def fun(name: str, age: int) -> str:
     return f"{0}, age: {1}"
