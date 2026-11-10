@@ -273,6 +273,21 @@ def is_in_path(q: Path, paths: list[Path]) -> bool:
     return False
 
 
+def clean_pathlist(paths: list[Path], remove: Path | None = None) -> list[Path]:
+    """
+    Return an expanded, resolved list of paths. Remove ``remove`` from the
+    list if provided.
+    """
+    lp: list[Path] = []
+    if remove:
+        remove = remove.expanduser().resolve()
+    for p in paths:
+        pr = p.expanduser().resolve()
+        if pr != remove:
+            lp.append(pr)
+    return lp
+
+
 def paths_to_deploy(
     r: Path, e: list[Path] = [], i: list[Path] = []
 ) -> list[Path]:
@@ -280,7 +295,8 @@ def paths_to_deploy(
     Walk the root local directory ``r`` and build a list of absolute file
     and directory paths which should be included in the deployment.
 
-    Paths in ``e`` will be excluded.
+    Paths in ``e`` will be excluded. ``r`` will always be included, even if it
+    is provided in ``e``.
 
     Paths in ``i`` will be included, even if they are excluded by ``e``.
     However, a path in ``i`` which is a subpath of an exluded directory in ``e``
@@ -289,6 +305,8 @@ def paths_to_deploy(
     Any file paths in the returned list must also include their parent directory
     paths within ``r``, so that consumers of this list will know to create them.
     """
+    e = clean_pathlist(e, remove=r)
+    i = clean_pathlist(i)
     LOGGER.debug("User exclude paths: %s", e)
     LOGGER.debug("User include paths: %s", i)
     lp: list[Path] = []
