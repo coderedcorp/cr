@@ -1,9 +1,12 @@
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
+from cr.utils import clean_pathlist
 from cr.utils import exec_proc
 from cr.utils import get_command
 from cr.utils import git_ignored
+from cr.utils import is_in_path
 
 
 class TestSubprocesses(unittest.TestCase):
@@ -69,3 +72,37 @@ class TestGit(unittest.TestCase):
         # Should return an empty list because this is not a git repo.
         lp = git_ignored(Path("/").resolve())
         self.assertTrue(lp == [])
+
+
+class TestPaths(unittest.TestCase):
+    def test_is_in_path(self):
+        with TemporaryDirectory() as temp:
+            lp = [
+                Path(temp),
+                Path("/path/to/file.txt"),
+                Path("/path/to/another-file.txt"),
+            ]
+            # Path is in the list.
+            self.assertTrue(is_in_path(Path("/path/to/file.txt"), lp))
+            # Path is NOT in the list.
+            self.assertFalse(is_in_path(Path("404.txt"), lp))
+            # A subdir of something in the list should return true.
+            self.assertTrue(is_in_path(Path(temp) / Path("sub.txt"), lp))
+
+    def test_clean_pathlist(self):
+        lp = [
+            Path("/dir/"),
+            Path("~/user.txt"),
+            Path("/path/to/file.txt"),
+        ]
+        lp_resolved = [p.expanduser().resolve() for p in lp]
+        self.assertEqual(
+            lp_resolved,
+            clean_pathlist(lp),
+        )
+        # Test removal.
+        extra = Path("/extra/")
+        self.assertEqual(
+            lp_resolved,
+            clean_pathlist(lp + [extra], remove=extra),
+        )
