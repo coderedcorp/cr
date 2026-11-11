@@ -24,6 +24,7 @@ Copyright (c) 2022-2024 CodeRed LLC.
 """
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -42,8 +43,9 @@ from rich.table import Table
 from cr import DOCS_LINK
 from cr import LOGGER
 from cr import VERSION
+from cr import Env
+from cr import OutputFormat
 from cr import UserCancelError
-from cr.api import Env
 from cr.api import Webapp
 from cr.api import check_update
 from cr.config import config
@@ -169,6 +171,13 @@ arg_env = Arg(
     default=Env.PROD.value,
     choices=Env,
     help=f"The environment to act upon. Default is {Env.PROD.value}.",
+)
+arg_output = Arg(
+    "--format",
+    type=OutputFormat,
+    default=OutputFormat.HUMAN.value,
+    choices=OutputFormat,
+    help="Output the results in machine readable formats.",
 )
 arg_path = Arg(
     "--path",
@@ -633,6 +642,7 @@ class Sftp(Command):
         p.add_argument(*arg_webapp.args, **arg_webapp.kwargs)
         p.add_argument(*arg_env.args, **arg_env.kwargs)
         p.add_argument(*arg_token.args, **arg_token.kwargs)
+        p.add_argument(*arg_output.args, **arg_output.kwargs)
 
     @classmethod
     def run(self, args: argparse.Namespace):
@@ -659,22 +669,43 @@ class Sftp(Command):
             border_style="cr.update_border",
         )
         CONSOLE_ERR.print(p)
-        CONSOLE.print(
-            f"SFTP host:       {host}\n"
-            f"SFTP port:       {port}\n"
-            f"SFTP user:       {user}"
-        )
+        if args.format == OutputFormat.HUMAN:
+            CONSOLE.print(
+                f"SFTP host:       {host}\n"
+                f"SFTP port:       {port}\n"
+                f"SFTP user:       {user}"
+            )
         with Progress(
             TextColumn("[progress.description]{task.description}"),
             SpinnerColumn(),
             console=CONSOLE,
             transient=True,
+            disable=args.format != OutputFormat.HUMAN,
         ) as pbar:
             # Generate a new SFTP password from CodeRed Cloud API.
             t = pbar.add_task("System password:", total=None)
             passwd = w.api_get_sftp_password()
             pbar.update(t, total=1, completed=1)
-        CONSOLE.print(f"System password: {passwd}")
+        if args.format == OutputFormat.HUMAN:
+            CONSOLE.print(f"System password: {passwd}")
+        elif args.format == OutputFormat.JSON:
+            CONSOLE.print(
+                json.dumps(
+                    {
+                        "host": host,
+                        "port": port,
+                        "user": user,
+                        "password": passwd,
+                    }
+                )
+            )
+        elif args.format == OutputFormat.SHELL:
+            CONSOLE.print(
+                f"CR_HOST={host}\n"
+                f"CR_PORT={port}\n"
+                f"CR_USER={user}\n"
+                f"CR_PASSWORD={passwd}"
+            )
 
 
 class Ssh(Command):
@@ -687,6 +718,7 @@ class Ssh(Command):
         p.add_argument(*arg_webapp.args, **arg_webapp.kwargs)
         p.add_argument(*arg_env.args, **arg_env.kwargs)
         p.add_argument(*arg_token.args, **arg_token.kwargs)
+        p.add_argument(*arg_output.args, **arg_output.kwargs)
 
     @classmethod
     def run(self, args: argparse.Namespace):
@@ -718,18 +750,39 @@ class Ssh(Command):
             border_style="cr.update_border",
         )
         CONSOLE_ERR.print(p)
-        CONSOLE.print(f"SSH command:     ssh -p {port} {user}@{host}")
+        if args.format == OutputFormat.HUMAN:
+            CONSOLE.print(f"SSH command:     ssh -p {port} {user}@{host}")
         with Progress(
             TextColumn("[progress.description]{task.description}"),
             SpinnerColumn(),
             console=CONSOLE,
             transient=True,
+            disable=args.format != OutputFormat.HUMAN,
         ) as pbar:
             # Generate a new SFTP password from CodeRed Cloud API.
             t = pbar.add_task("System password:", total=None)
             passwd = w.api_get_sftp_password()
             pbar.update(t, total=1, completed=1)
-        CONSOLE.print(f"System password: {passwd}")
+        if args.format == OutputFormat.HUMAN:
+            CONSOLE.print(f"System password: {passwd}")
+        elif args.format == OutputFormat.JSON:
+            CONSOLE.print(
+                json.dumps(
+                    {
+                        "host": host,
+                        "port": port,
+                        "user": user,
+                        "password": passwd,
+                    }
+                )
+            )
+        elif args.format == OutputFormat.SHELL:
+            CONSOLE.print(
+                f"CR_HOST={host}\n"
+                f"CR_PORT={port}\n"
+                f"CR_USER={user}\n"
+                f"CR_PASSWORD={passwd}"
+            )
 
 
 class Upload(Command):
