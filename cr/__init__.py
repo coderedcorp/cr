@@ -82,3 +82,12 @@ class Env(enum.Enum):
 
     def __str__(self):
         return self.value
+
+
+class OutputFormat(enum.Enum):
+    HUMAN = "human"
+    JSON = "json"
+    SHELL = "shell"
+
+    def __str__(self):
+        return self.value
