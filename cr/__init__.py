@@ -2,7 +2,7 @@ import enum
 import logging
 
 
-VERSION = "1.10"
+VERSION = "1.11"
 
 
 DOCS_LINK = "https://www.codered.cloud/cli/"
