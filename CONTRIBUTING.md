@@ -95,15 +95,30 @@ PyInstaller is used to create binaries. PyInstaller must be run on the same plat
 $ pyinstaller --clean --dist ./dist/bin/ ./cr.spec
 ```
 
-NOTE: macOS binaries will require special security permissions to run since we currently do not have code signing in place.
+NOTE: macOS binaries will require special security permissions to run if they are not signed and notarized.
 
 
 Code Signing Certificate
 ------------------------
 
-Certificate was purchased from: https://SignMyCode.com (issued by Sectigo). Go here to renew, reissue, or revoke it.
+Certificate was purchased from: https://SignMyCode.com. Go here to renew, reissue, or revoke it.
 
-### Windows
+
+### Windows (new way using HSM-backed Azure KeyVault)
+
+Starting in 2026, code signing certificates must be stored on hardware security modules. Azure KeyVault provides a hardware backed product for this purpose.
+
+General setup instructions for the KeyVault, and certificate issuance are here: https://signmycode.com/resources/how-to-create-private-keys-csr-and-import-code-signing-certificate-in-azure-keyvault-hsm/
+
+Instructions for signing the binary using the KeyVault are here: https://learn.microsoft.com/en-us/windows/msix/desktop/cicd-keyvault
+
+To sign a binary manually using KeyVault, install [AzureSignTool](https://github.com/vcsjones/AzureSignTool), then run the following:
+
+```
+AzureSignTool.exe sign -kvt KEYVAULT_TENANT -kvu KEYVAULT_URI -kvi KEYVAULT_APPID -kvs KEYVAULT_SECRET -kvc KEYVAULT_CERT -tr "http://timestamp.digicert.com" ./cr.exe
+```
+
+### Windows (old way, using certificate file)
 
 To sign the PyInstaller binaries on Windows, make sure the Windows SDK is installed (i.e. install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) then select "Desktop Development with C++"). This is required to get [signtool](https://learn.microsoft.com/en-us/dotnet/framework/tools/signtool-exe)
 

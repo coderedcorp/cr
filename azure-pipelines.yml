@@ -72,8 +72,8 @@ stages:
   # Main Python version for building distributables.
   - name: CR_PY_VERSION
     value: '3.15'
-  # Link the group of Apple passwords from pipeline library.
-  - group: 'Apple IDs'
+  # Link the group of Code Signing variables from pipeline library.
+  - group: 'Code Signing'
 
   jobs:
   - job: windows
@@ -86,6 +86,12 @@ stages:
       inputs:
         versionSpec: '$(CR_PY_VERSION)'
         architecture: "x64"
+    - task: DotNetCoreCLI@2
+      displayName: 'Install Azure SignTool'
+      inputs:
+        command: custom
+        custom: tool
+        arguments: 'install --global AzureSignTool'
 
     - script: python -m pip install -r requirements-pipeline.txt
       displayName: "CR-QC: Install"
@@ -96,22 +102,15 @@ stages:
     - script: pyinstaller --clean --dist .\dist\ .\cr.spec
       displayName: "CR-BLD: Build"
 
-    - task: DownloadSecureFile@1
-      displayName: "CR-BLD: Download Certificate"
-      name: certificate
-      condition: eq(variables['CR_RELEASE'], 'True')
-      inputs:
-        secureFile: "codered_codesign.pfx"
-
-    - pwsh: |
-        # Find newest signtool.
-        $signtool = (Get-ChildItem -Recurse -Path "C:\Program Files (x86)\Windows Kits\10\bin\*\x64" -Include "signtool.exe")[-1].FullName
-        Write-Output $signtool
-        Write-Output $(certificate.secureFilePath)
-        # Run signtool from path.
-        & $signtool sign /f $(certificate.secureFilePath) /fd certHash /td certHash /tr "http://timestamp.sectigo.com" .\dist\cr.exe
+    - pwsh: AzureSignTool sign -kvt "$(CR_KEYVAULT_TENANT)" -kvu "$(CR_KEYVAULT_URI)" -kvi "$(CR_KEYVAULT_APPID)" -kvs "$(CR_KEYVAULT_SECRET)" -kvc "$(CR_KEYVAULT_CERT)" -tr "http://timestamp.digicert.com" ./dist/cr.exe
       condition: and(succeeded(), eq(variables['CR_RELEASE'], 'True'))
       displayName: "CR-BLD: Sign"
+      env:
+        CR_KEYVAULT_TENANT: $(CR_KEYVAULT_TENANT)
+        CR_KEYVAULT_URI: $(CR_KEYVAULT_URI)
+        CR_KEYVAULT_APPID: $(CR_KEYVAULT_APPID)
+        CR_KEYVAULT_SECRET: $(CR_KEYVAULT_SECRET)
+        CR_KEYVAULT_CERT: $(CR_KEYVAULT_CERT)
 
     - publish: $(System.DefaultWorkingDirectory)\dist\cr.exe
       artifact: cr.exe
