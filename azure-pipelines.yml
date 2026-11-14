@@ -71,7 +71,7 @@ stages:
     value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
   # Main Python version for building distributables.
   - name: CR_PY_VERSION
-    value: '3.15'
+    value: '3.14'
   # Link the group of Code Signing variables from pipeline library.
   - group: 'Code Signing'
 
@@ -87,11 +87,11 @@ stages:
         versionSpec: '$(CR_PY_VERSION)'
         architecture: "x64"
     - task: DotNetCoreCLI@2
-      displayName: 'Install Azure SignTool'
+      displayName: "Install Azure SignTool"
       inputs:
         command: custom
         custom: tool
-        arguments: 'install --global AzureSignTool'
+        arguments: "install --global AzureSignTool"
 
     - script: python -m pip install -r requirements-pipeline.txt
       displayName: "CR-QC: Install"
@@ -101,6 +101,9 @@ stages:
 
     - script: pyinstaller --clean --dist .\dist\ .\cr.spec
       displayName: "CR-BLD: Build"
+
+    - script: .\dist\cr.exe --help
+      displayName: "CR-BLD: Test binary"
 
     - pwsh: AzureSignTool sign -kvt "$(CR_KEYVAULT_TENANT)" -kvu "$(CR_KEYVAULT_URI)" -kvi "$(CR_KEYVAULT_APPID)" -kvs "$(CR_KEYVAULT_SECRET)" -kvc "$(CR_KEYVAULT_CERT)" -tr "http://timestamp.digicert.com" ./dist/cr.exe
       condition: and(succeeded(), eq(variables['CR_RELEASE'], 'True'))
@@ -147,6 +150,9 @@ stages:
         ditto -c -k ./dist/cr-macos ./dist/cr-macos.zip
       displayName: "CR-BLD: Rename & zip"
 
+    - script: ./dist/cr-macos --help
+      displayName: "CR-BLD: Test binary"
+
     - script: xcrun notarytool submit --apple-id $CR_APPLE_ID --password $CR_APPLE_PASS --team-id $CR_APPLE_TEAM --wait ./dist/cr-macos.zip
       displayName: "CR-BLD: Notarize"
       condition: and(succeeded(), eq(variables['CR_RELEASE'], 'True'))
@@ -181,6 +187,9 @@ stages:
 
     - script: mv ./dist/cr ./dist/cr-linux
       displayName: "CR-BLD: Rename"
+
+    - script: ./dist/cr-linux --help
+      displayName: "CR-BLD: Test binary"
 
     - publish: $(System.DefaultWorkingDirectory)/dist/cr-linux
       artifact: cr-linux
